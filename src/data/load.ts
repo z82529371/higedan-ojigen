@@ -29,10 +29,21 @@ export async function loadAppData(): Promise<AppData> {
     metas.map(async (meta) => {
       const raw = await fetchJson(meta.data);
       const song = parseSong(raw, gestures);
-      const audioRes = await fetch(song.audio, { method: "HEAD" });
-      const audioMissing =
-        !audioRes.ok || (audioRes.headers.get("content-type") ?? "").startsWith("text/html");
-      return { meta, song, audioMissing };
+      let audioPath = song.audio;
+      let audioRes = await fetch(audioPath, { method: "HEAD" });
+      let isOk = audioRes.ok && !(audioRes.headers.get("content-type") ?? "").startsWith("text/html");
+
+      // 如果預設路徑 (.m4a) 找不到，嘗試備選副檔名 (.mp3)
+      if (!isOk && audioPath.endsWith(".m4a")) {
+        const mp3Path = audioPath.replace(/\.m4a$/, ".mp3");
+        const mp3Res = await fetch(mp3Path, { method: "HEAD" });
+        if (mp3Res.ok && !(mp3Res.headers.get("content-type") ?? "").startsWith("text/html")) {
+          audioPath = mp3Path;
+          isOk = true;
+        }
+      }
+
+      return { meta, song: { ...song, audio: audioPath }, audioMissing: !isOk };
     }),
   );
 
