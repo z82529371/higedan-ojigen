@@ -1,0 +1,5 @@
+{
+  "songs": [
+    { "id": "sample", "title": "Sample Song", "data": "data/sample.json" }
+  ]
+}
