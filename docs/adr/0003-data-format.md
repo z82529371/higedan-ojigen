@@ -14,7 +14,7 @@
 ```json
 { "gestures": ["✌️", "🤣", "☝️", "🙆", "✊", "🙌"] }
 ```
-- `gestures[]` — 封閉集合，目前 6 個 emoji。
+- `gestures[]` — 可擴充目錄，目前 6 個 emoji；遇到新動作即追加。
 
 **`data/{id}.json`**
 ```json
@@ -22,6 +22,7 @@
   "id": "subtitle",
   "title": "Subtitle",
   "audio": "audio/subtitle.mp3",
+  "note": "開場有 intro，請提早準備應援",
   "lyrics": [
     { "start": 0.5, "end": 4.2, "text": "君は涙零しながら", "romaji": "kimi wa namida koboshi nagara" },
     { "start": 4.2, "end": 8.0, "text": "笑顔で僕に言った" }
@@ -39,6 +40,7 @@
   ]
 }
 ```
+- `note`：選填的**演唱會提示**文字，於播放頁標題下顯示；不一定每首都有。
 - `lyrics[]`：每行 `start`/`end`/`text` 必填（秒，`end > start`）；`romaji` 選填，只在合唱區間內的行需要。
 - `ouenPoints[]`：`start`/`end` 必填，不得與其他應援點時間重疊。
 - `actions[]`：至少 1 個，`type` 為 `chorus`/`gesture`/`clap`。
