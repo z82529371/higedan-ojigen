@@ -42,7 +42,7 @@
 ```
 - `note`：選填的**演唱會提示**文字，於播放頁標題下顯示；不一定每首都有。
 - `lyrics[]`：每行 `start`/`end`/`text` 必填（秒，`end > start`）；`romaji` 選填，只在合唱區間內的行需要。
-- `ouenPoints[]`：`start`/`end` 必填，不得與其他應援點時間重疊。
+- `ouenPoints[]`：`start`/`end` 必填，或改用 `times[]` 陣列（格式為 `[{ "start": s1, "end": e1 }, { "start": s2, "end": e2 }]`）一次指定多組重複時間段，不得與其他應援點時間重疊。
 - `actions[]`：至少 1 個，`type` 為 `chorus`/`gesture`/`clap`。
   - `chorus`：選填 `text` + `romaji`（補充文字）。
   - `gesture`：必填 `gesture`，值必須在 `gestures.json` 內。

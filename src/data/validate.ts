@@ -97,24 +97,36 @@ function parseAction(raw: unknown, context: string, gestures: readonly string[])
   }
 }
 
-function parseOuenPoint(raw: unknown, context: string, index: number, gestures: readonly string[]): OuenPoint {
+function parseOuenPoint(raw: unknown, context: string, index: number, gestures: readonly string[]): OuenPoint[] {
   if (!isObject(raw)) {
     throw new Error(`${context} 的 ouenPoints 第 ${index} 個不是物件`);
   }
   const pointContext = `${context} 的 ouenPoints 第 ${index} 個`;
+  if (!Array.isArray(raw.actions) || raw.actions.length === 0) {
+    throw new Error(`${pointContext} 必須有至少一個「actions」`);
+  }
+  const actions = raw.actions.map((action) => parseAction(action, pointContext, gestures));
+
+  if (Array.isArray(raw.times) && raw.times.length > 0) {
+    return raw.times.map((t, tIdx) => {
+      if (!isObject(t)) {
+        throw new Error(`${pointContext} 的 times 第 ${tIdx + 1} 個不是物件`);
+      }
+      const start = requireNumber(t, "start", `${pointContext} 的 times 第 ${tIdx + 1} 個`);
+      const end = requireNumber(t, "end", `${pointContext} 的 times 第 ${tIdx + 1} 個`);
+      if (end <= start) {
+        throw new Error(`${pointContext} 的 times 第 ${tIdx + 1} 個：end（${end}）必須大於 start（${start}）`);
+      }
+      return { start, end, actions };
+    });
+  }
+
   const start = requireNumber(raw, "start", pointContext);
   const end = requireNumber(raw, "end", pointContext);
   if (end <= start) {
     throw new Error(`${pointContext}：end（${end}）必須大於 start（${start}）`);
   }
-  if (!Array.isArray(raw.actions) || raw.actions.length === 0) {
-    throw new Error(`${pointContext} 必須有至少一個「actions」`);
-  }
-  return {
-    start,
-    end,
-    actions: raw.actions.map((action) => parseAction(action, pointContext, gestures)),
-  };
+  return [{ start, end, actions }];
 }
 
 export function parseSong(raw: unknown, gestures: readonly string[]): Song {
@@ -150,20 +162,22 @@ export function parseSong(raw: unknown, gestures: readonly string[]): Song {
   if (!Array.isArray(raw.ouenPoints)) {
     throw new Error(`${context} 缺少「ouenPoints」陣列`);
   }
-  const ouenPoints = raw.ouenPoints.map((point, i) => parseOuenPoint(point, context, i + 1, gestures));
-  const sorted = [...ouenPoints].sort((a, b) => a.start - b.start);
-  for (let i = 1; i < sorted.length; i++) {
-    const prev = sorted[i - 1];
-    const curr = sorted[i];
+  const ouenPoints = raw.ouenPoints
+    .flatMap((point, i) => parseOuenPoint(point, context, i + 1, gestures))
+    .sort((a, b) => a.start - b.start);
+
+  for (let i = 1; i < ouenPoints.length; i++) {
+    const prev = ouenPoints[i - 1];
+    const curr = ouenPoints[i];
     if (curr.start < prev.end) {
       throw new Error(
-        `${context} 的 ouenPoints 時間重疊：應援點 ${prev.start}–${prev.end} 與應援點 ${curr.start}–${curr.end}`,
+        `${context} 的 ouenPoints 時間重疊：區間（${curr.start}–${curr.end}）與區間（${prev.start}–${prev.end}）`,
       );
     }
   }
 
   result.lyrics = lyrics;
-  result.ouenPoints = ouenPoints;
+  result.ouenPoints = ouenPoints as (OuenPoint & { start: number; end: number })[];
   if (Array.isArray(raw.lockedLines)) {
     result.lockedLines = raw.lockedLines.filter((x): x is number => typeof x === "number");
   }

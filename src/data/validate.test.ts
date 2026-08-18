@@ -188,6 +188,36 @@ describe("parseSong", () => {
     expect(() => parseSong(raw, GESTURES)).not.toThrow();
   });
 
+  it("supports times array with multiple time intervals for the same action", () => {
+    const raw = {
+      id: "x",
+      title: "X",
+      audio: "a.mp3",
+      lyrics: [],
+      ouenPoints: [
+        {
+          times: [
+            { start: 10.0, end: 15.0 },
+            { start: 30.0, end: 35.0 },
+          ],
+          actions: [{ type: "clap", pattern: "👏 👏 👏 👏" }],
+        },
+      ],
+    };
+    const parsed = parseSong(raw, GESTURES);
+    expect(parsed.ouenPoints).toHaveLength(2);
+    expect(parsed.ouenPoints[0]).toEqual({
+      start: 10.0,
+      end: 15.0,
+      actions: [{ type: "clap", pattern: "👏 👏 👏 👏" }],
+    });
+    expect(parsed.ouenPoints[1]).toEqual({
+      start: 30.0,
+      end: 35.0,
+      actions: [{ type: "clap", pattern: "👏 👏 👏 👏" }],
+    });
+  });
+
   it("rejects an empty actions list", () => {
     const raw = {
       id: "x",

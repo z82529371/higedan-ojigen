@@ -18,9 +18,15 @@ export interface ClapAction {
 
 export type OuenAction = ChorusAction | GestureAction | ClapAction;
 
-export interface OuenPoint {
+export interface OuenTimeInterval {
   start: number;
   end: number;
+}
+
+export interface OuenPoint {
+  start?: number;
+  end?: number;
+  times?: OuenTimeInterval[];
   actions: OuenAction[];
 }
 
