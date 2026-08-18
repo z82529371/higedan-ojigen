@@ -435,10 +435,16 @@ a {
   padding: 20px 0 20px 20px;
   border: 0;
   border-bottom: 1px solid #eef0f2;
-  border-radius: 0;
+  border-radius: 12px;
   background: transparent;
   box-shadow: none;
   text-align: left;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.chant-line.active {
+  background: #f0f7ff;
+  border-bottom-color: #b3d7ff;
 }
 
 .chant-line::before {

@@ -18,6 +18,7 @@ interface PlayerProps {
   note?: string;
   lyrics: LyricLine[];
   ouenPoints: OuenPoint[];
+  initialLockedLines?: number[];
   audioMissing: boolean;
   songList: SetlistEntry[];
   currentId: string;
@@ -33,6 +34,7 @@ export function Player({
   note,
   lyrics,
   ouenPoints,
+  initialLockedLines,
   audioMissing,
   songList,
   currentId,
@@ -135,6 +137,26 @@ export function Player({
     [seekTo],
   );
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+      if (e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        seekBy(-5);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        seekBy(5);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [togglePlay, seekBy]);
+
   const replay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) {
@@ -152,21 +174,142 @@ export function Player({
   const currentIndex = useMemo(() => currentLineIndex(currentTime, lyrics), [currentTime, lyrics]);
   const chorusActive = useMemo(() => isChorusActive(currentTime, ouenPoints), [currentTime, ouenPoints]);
 
+  const [lyricsState, setLyricsState] = useState<LyricLine[]>(lyrics);
+  const [lockedLines, setLockedLines] = useState<Set<number>>(() => new Set(initialLockedLines ?? []));
+
+  useEffect(() => {
+    setLyricsState(lyrics);
+    setLockedLines(new Set(initialLockedLines ?? []));
+  }, [lyrics, initialLockedLines]);
+
+  const handleToggleLock = useCallback((lineIndex: number) => {
+    setLockedLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(lineIndex)) {
+        next.delete(lineIndex);
+      } else {
+        next.add(lineIndex);
+      }
+      // 同步寫入鎖定狀態至硬碟 JSON 檔（數字由小到大排序）
+      fetch("/api/save-song-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          songId: currentId,
+          lyrics: lyricsState,
+          lockedLines: Array.from(next).sort((a, b) => a - b),
+        }),
+      }).catch((err) => console.error("Save error:", err));
+      return next;
+    });
+  }, [currentId, lyricsState]);
+
+  const handleAdjustLineTime = useCallback(
+    (idx: number, delta: number) => {
+      if (lockedLines.has(idx)) return;
+
+      setLyricsState((prevLyrics) => {
+        const next = prevLyrics.map((l) => ({ ...l }));
+        if (!next[idx]) return prevLyrics;
+
+        // 1. 找出從 idx+1 開始直到遇到下一個鎖定行（或歌尾）的所有未鎖定句子
+        let unlockedSegment: number[] = [];
+        for (let i = idx + 1; i < next.length; i++) {
+          if (lockedLines.has(i)) break;
+          unlockedSegment.push(i);
+        }
+
+        // 2. 確定該段未鎖定區域的總結束邊界
+        let boundaryEnd = 0;
+        if (unlockedSegment.length > 0) {
+          const lastIndex = unlockedSegment[unlockedSegment.length - 1];
+          if (lastIndex < next.length - 1) {
+            boundaryEnd = next[lastIndex + 1].start;
+          } else {
+            boundaryEnd = duration > 0 ? duration : Math.max(next[lastIndex].end, next[idx].start + 10);
+          }
+        }
+
+        // 3. 計算並限制本句 end
+        let maxAllowedEnd = unlockedSegment.length > 0
+          ? boundaryEnd - unlockedSegment.length * 0.1
+          : (duration > 0 ? duration : 9999);
+        
+        const newEnd = Number(Math.min(maxAllowedEnd, Math.max(next[idx].start + 0.1, next[idx].end + delta)).toFixed(2));
+        next[idx].end = newEnd;
+
+        // 4. 將多出來/減少的時間平均分配給剩餘未鎖定的句子
+        if (unlockedSegment.length > 0) {
+          const remainingTime = boundaryEnd - newEnd;
+          const timePerLine = remainingTime / unlockedSegment.length;
+
+          unlockedSegment.forEach((lineIdx, i) => {
+            const lineStart = newEnd + i * timePerLine;
+            const lineEnd = newEnd + (i + 1) * timePerLine;
+            next[lineIdx].start = Number(lineStart.toFixed(2));
+            next[lineIdx].end = Number(lineEnd.toFixed(2));
+          });
+        }
+
+        // 同步修改原陣列
+        next.forEach((l, i) => {
+          if (lyrics[i]) {
+            lyrics[i].start = l.start;
+            lyrics[i].end = l.end;
+          }
+        });
+
+        // 自動寫入硬碟 JSON 檔（數字由小到大排序）
+        fetch("/api/save-song-data", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            songId: currentId,
+            lyrics: next,
+            lockedLines: Array.from(lockedLines).sort((a, b) => a - b),
+          }),
+        }).catch((err) => console.error("Save error:", err));
+
+        return next;
+      });
+    },
+    [currentId, lyrics, lockedLines, duration],
+  );
+
+  const [devMode, setDevMode] = useState(false);
+
   return (
     <div className="song-page">
       <header className="song-header-row">
         <button type="button" className="back-btn" onClick={onBack}>
           ‹ 返回歌單
         </button>
-        <button type="button" className="setlist-btn" onClick={() => setSetlistOpen(true)}>
-          ☰ 曲目
-        </button>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <button
+            type="button"
+            className="setlist-btn"
+            style={{
+              background: devMode ? "#ff9500" : "#eee",
+              color: devMode ? "#fff" : "#333",
+              fontWeight: "bold",
+            }}
+            onClick={() => setDevMode((prev) => !prev)}
+          >
+            {devMode ? "🛠️ 開發對齊模式" : "🎵 一般瀏覽模式"}
+          </button>
+          <button type="button" className="setlist-btn" onClick={() => setSetlistOpen(true)}>
+            ☰ 曲目
+          </button>
+        </div>
       </header>
 
       <div className="song-title-row">
         <h1>{title}</h1>
         <span className={`status-chip${audioMissing ? " missing" : ""}`}>
           {audioMissing ? "缺音檔" : "音檔就緒"}
+        </span>
+        <span className="status-chip" style={{ background: "#e3f2fd", color: "#0288d1" }}>
+          已鎖定 {lockedLines.size}/{lyricsState.length} 句 (完成率 {lyricsState.length > 0 ? Math.round((lockedLines.size / lyricsState.length) * 100) : 0}%)
         </span>
       </div>
 
@@ -195,13 +338,17 @@ export function Player({
 
       {mode === "read" ? (
         <LyricsArea
-          lyrics={lyrics}
+          lyrics={lyricsState}
           ouenPoints={ouenPoints}
           mode="read"
           currentIndex={currentIndex}
           chorusActive={chorusActive}
           currentTime={currentTime}
           onSeek={seekTo}
+          onAdjustLineTime={devMode ? handleAdjustLineTime : undefined}
+          lockedLines={lockedLines}
+          onToggleLock={devMode ? handleToggleLock : undefined}
+          devMode={devMode}
         />
       ) : (
         <div className="karaoke-mode">
@@ -211,13 +358,17 @@ export function Player({
             </div>
           </div>
           <LyricsArea
-            lyrics={lyrics}
+            lyrics={lyricsState}
             ouenPoints={ouenPoints}
             mode="karaoke"
             currentIndex={currentIndex}
             chorusActive={chorusActive}
             currentTime={currentTime}
             onSeek={seekTo}
+            onAdjustLineTime={devMode ? handleAdjustLineTime : undefined}
+            lockedLines={lockedLines}
+            onToggleLock={devMode ? handleToggleLock : undefined}
+            devMode={devMode}
           />
         </div>
       )}

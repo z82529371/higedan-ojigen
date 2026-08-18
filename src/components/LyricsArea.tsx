@@ -14,6 +14,10 @@ interface LyricsAreaProps {
   chorusActive: boolean;
   currentTime: number;
   onSeek: (time: number) => void;
+  onAdjustLineTime?: (lineIndex: number, delta: number) => void;
+  lockedLines?: Set<number>;
+  onToggleLock?: (lineIndex: number) => void;
+  devMode?: boolean;
 }
 
 interface LineMarker {
@@ -102,6 +106,10 @@ export const LyricsArea = memo(function LyricsArea({
   chorusActive,
   currentTime,
   onSeek,
+  onAdjustLineTime,
+  lockedLines,
+  onToggleLock,
+  devMode,
 }: LyricsAreaProps) {
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const built = useMemo(() => buildMarkers(lyrics, ouenPoints), [lyrics, ouenPoints]);
@@ -136,30 +144,93 @@ export const LyricsArea = memo(function LyricsArea({
   }, [lyrics, ouenPoints, built]);
 
   useEffect(() => {
-    if (mode !== "karaoke" || currentIndex === null) {
+    if (currentIndex === null) {
       return;
     }
-    const idx = karaokeRows.findIndex((r) => r.kind === "line" && r.lineIndex === currentIndex);
-    if (idx >= 0) {
-      rowRefs.current[idx]?.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (mode === "karaoke") {
+      const idx = karaokeRows.findIndex((r) => r.kind === "line" && r.lineIndex === currentIndex);
+      if (idx >= 0) {
+        rowRefs.current[idx]?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+    } else {
+      const idx = readItems.findIndex((r) => r.kind === "line" && r.lineIndex === currentIndex);
+      if (idx >= 0) {
+        rowRefs.current[idx]?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
     }
-  }, [mode, currentIndex, karaokeRows]);
+  }, [mode, currentIndex, karaokeRows, readItems]);
 
   if (mode === "read") {
     return (
       <div className="read-mode">
         {readItems.map((item, i) => {
           if (item.kind === "line") {
-            const cls = item.chorus ? "chorus" : "lyrics";
+            const isActive = item.lineIndex === currentIndex;
+            const cls = `${item.chorus ? "chorus" : "lyrics"}${isActive ? " active" : ""}`;
             return (
-              <button
+              <div
                 key={i}
-                type="button"
+                role="button"
+                tabIndex={0}
+                ref={(el) => {
+                  rowRefs.current[i] = el as unknown as HTMLButtonElement;
+                }}
                 className={`chant-line ${cls}`}
                 onClick={() => onSeek(item.line.start)}
+                onKeyDown={(e) => { if (e.key === "Enter") onSeek(item.line.start); }}
               >
-                <div className="chant-time">
-                  {formatTime(item.line.start)} · {item.chorus ? "合唱" : "歌詞"}
+                <div className="chant-time" style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>
+                    {devMode ? (
+                      <>
+                        {item.line.start.toFixed(1)}s ~ {item.line.end.toFixed(1)}s
+                        <span style={{ fontSize: "11px", color: "#888", marginLeft: "6px" }}>
+                          (長度: {(item.line.end - item.line.start).toFixed(1)}秒)
+                        </span>
+                        {isActive && (
+                          <span style={{ fontSize: "11px", color: "#0071e3", fontWeight: "bold", marginLeft: "6px" }}>
+                            ▶ 已唱 {(currentTime - item.line.start).toFixed(1)}s / 剩 {(item.line.end - currentTime).toFixed(1)}s
+                          </span>
+                        )}
+                        {" · "}
+                      </>
+                    ) : null}
+                    {item.chorus ? "合唱" : "歌詞"}
+                  </span>
+                  {onAdjustLineTime && (
+                    <span onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                      {onToggleLock && (
+                        <button
+                          type="button"
+                          style={{
+                            padding: "1px 6px",
+                            fontSize: "10px",
+                            background: lockedLines?.has(item.lineIndex) ? "#ff3b30" : "#eee",
+                            color: lockedLines?.has(item.lineIndex) ? "#fff" : "#333",
+                            borderRadius: "3px",
+                            border: "1px solid #ccc",
+                            cursor: "pointer",
+                            fontWeight: "bold",
+                            marginRight: "4px"
+                          }}
+                          onClick={() => onToggleLock(item.lineIndex)}
+                        >
+                          {lockedLines?.has(item.lineIndex) ? "🔒 已鎖定" : "🔓 鎖定"}
+                        </button>
+                      )}
+                      {!lockedLines?.has(item.lineIndex) && (
+                        <>
+                          <span style={{ fontSize: "11px", color: "#666", marginRight: "2px" }}>切分對齊:</span>
+                          <button type="button" style={{ padding: "1px 5px", fontSize: "10px" }} onClick={() => onAdjustLineTime(item.lineIndex, -5)}>-5s</button>
+                          <button type="button" style={{ padding: "1px 5px", fontSize: "10px" }} onClick={() => onAdjustLineTime(item.lineIndex, -1)}>-1s</button>
+                          <button type="button" style={{ padding: "1px 5px", fontSize: "10px" }} onClick={() => onAdjustLineTime(item.lineIndex, -0.1)}>-0.1s</button>
+                          <button type="button" style={{ padding: "1px 5px", fontSize: "10px" }} onClick={() => onAdjustLineTime(item.lineIndex, 0.1)}>+0.1s</button>
+                          <button type="button" style={{ padding: "1px 5px", fontSize: "10px" }} onClick={() => onAdjustLineTime(item.lineIndex, 1)}>+1s</button>
+                          <button type="button" style={{ padding: "1px 5px", fontSize: "10px" }} onClick={() => onAdjustLineTime(item.lineIndex, 5)}>+5s</button>
+                        </>
+                      )}
+                    </span>
+                  )}
                 </div>
                 {item.markers.length > 0 && (
                   <div className="chant-markers">
@@ -177,15 +248,17 @@ export const LyricsArea = memo(function LyricsArea({
                 )}
                 <div className="chant-text">{item.line.text}</div>
                 {item.line.romaji && <div className="chant-romaji">{item.line.romaji}</div>}
-              </button>
+              </div>
             );
           }
           return (
-            <button
+            <div
               key={i}
-              type="button"
+              role="button"
+              tabIndex={0}
               className="chant-line"
               onClick={() => onSeek(item.time)}
+              onKeyDown={(e) => { if (e.key === "Enter") onSeek(item.time); }}
             >
               <div className="chant-time">{formatTime(item.time)} · 應援</div>
               <div className="chant-markers">
@@ -200,7 +273,7 @@ export const LyricsArea = memo(function LyricsArea({
                   </span>
                 ))}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
@@ -221,14 +294,16 @@ export const LyricsArea = memo(function LyricsArea({
                   : "future";
           const cls = state === "active" && chorusActive ? "active chorus" : state;
           return (
-            <button
+            <div
               key={i}
-              type="button"
+              role="button"
+              tabIndex={0}
               ref={(el) => {
                 rowRefs.current[i] = el;
               }}
               className={`karaoke-line ${cls}`}
               onClick={() => onSeek(row.line.start)}
+              onKeyDown={(e) => { if (e.key === "Enter") onSeek(row.line.start); }}
             >
               {row.markers.length > 0 && (
                 <span className="karaoke-markers">
@@ -244,22 +319,71 @@ export const LyricsArea = memo(function LyricsArea({
                   ))}
                 </span>
               )}
-              <span className="karaoke-text">{row.line.text}</span>
+              <span className="karaoke-text">
+                {row.line.text}
+                {devMode && (
+                  <>
+                    <span style={{ fontSize: "11px", opacity: 0.7, marginLeft: "6px" }}>
+                      ({row.line.start.toFixed(1)}s ~ {row.line.end.toFixed(1)}s, {(row.line.end - row.line.start).toFixed(1)}s)
+                    </span>
+                    {state === "active" && (
+                      <span style={{ fontSize: "11px", color: "#0071e3", fontWeight: "bold", marginLeft: "6px" }}>
+                        ▶ 已唱 {(currentTime - row.line.start).toFixed(1)}s / 剩 {(row.line.end - currentTime).toFixed(1)}s
+                      </span>
+                    )}
+                  </>
+                )}
+                {onAdjustLineTime && (
+                  <span onClick={(e) => e.stopPropagation()} style={{ marginLeft: "6px", display: "inline-flex", gap: "3px", alignItems: "center" }}>
+                    {onToggleLock && (
+                      <button
+                        type="button"
+                        style={{
+                          padding: "1px 5px",
+                          fontSize: "9px",
+                          background: lockedLines?.has(row.lineIndex) ? "#ff3b30" : "#eee",
+                          color: lockedLines?.has(row.lineIndex) ? "#fff" : "#333",
+                          borderRadius: "3px",
+                          border: "1px solid #ccc",
+                          cursor: "pointer",
+                          fontWeight: "bold",
+                          marginRight: "2px"
+                        }}
+                        onClick={() => onToggleLock(row.lineIndex)}
+                      >
+                        {lockedLines?.has(row.lineIndex) ? "🔒 已鎖定" : "🔓 鎖定"}
+                      </button>
+                    )}
+                    {!lockedLines?.has(row.lineIndex) && (
+                      <>
+                        <button type="button" style={{ padding: "1px 3px", fontSize: "9px" }} onClick={() => onAdjustLineTime(row.lineIndex, -5)}>-5s</button>
+                        <button type="button" style={{ padding: "1px 3px", fontSize: "9px" }} onClick={() => onAdjustLineTime(row.lineIndex, -1)}>-1s</button>
+                        <button type="button" style={{ padding: "1px 3px", fontSize: "9px" }} onClick={() => onAdjustLineTime(row.lineIndex, -0.1)}>-0.1s</button>
+                        <button type="button" style={{ padding: "1px 3px", fontSize: "9px" }} onClick={() => onAdjustLineTime(row.lineIndex, 0.1)}>+0.1s</button>
+                        <button type="button" style={{ padding: "1px 3px", fontSize: "9px" }} onClick={() => onAdjustLineTime(row.lineIndex, 1)}>+1s</button>
+                        <button type="button" style={{ padding: "1px 3px", fontSize: "9px" }} onClick={() => onAdjustLineTime(row.lineIndex, 5)}>+5s</button>
+                      </>
+                    )}
+                  </span>
+                )}
+              </span>
               {row.line.romaji && <span className="karaoke-romaji">{row.line.romaji}</span>}
-            </button>
+            </div>
           );
         }
         const active = isPointActive(row.point, currentTime);
         const state = active ? "active" : currentTime >= row.point.end ? "past" : "future";
         return (
-          <button
+          <div
             key={i}
-            type="button"
+            role="button"
+            tabIndex={0}
             ref={(el) => {
-              rowRefs.current[i] = el;
+              rowRefs.current[i] = el as unknown as HTMLButtonElement;
             }}
             className={`karaoke-line marker-line ${state}`}
             onClick={() => onSeek(row.time)}
+            onKeyDown={(e) => { if (e.key === "Enter") onSeek(row.time); }}
           >
             {row.markers.map((m, j) => (
               <span
@@ -271,7 +395,7 @@ export const LyricsArea = memo(function LyricsArea({
                 {m.label}
               </span>
             ))}
-          </button>
+          </div>
         );
       })}
     </div>
