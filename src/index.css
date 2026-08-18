@@ -21,15 +21,15 @@
   --text-2: #5f6368;
   --text-3: #8b9096;
 
-  --brand: #00c7b7;
-  --brand-strong: #00aa9d;
-  --brand-soft: #e9fbf8;
-  --brand-border: #b9eee8;
-  --brand-focus: rgba(0, 199, 183, 0.18);
+  --brand: #b8a024;
+  --brand-strong: #9e881b;
+  --brand-soft: #fcf8e3;
+  --brand-border: #e6d87e;
+  --brand-focus: rgba(184, 160, 36, 0.22);
 
-  --chorus: #b8a024;
-  --gesture: #b85003;
-  --clap: #c290b5;
+  --chorus: #d97706;
+  --gesture: #ea580c;
+  --clap: #db2777;
 
   --radius: 16px;
 }
@@ -48,17 +48,8 @@ body {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "SF Pro Text",
-    "PingFang TC",
-    "Noto Sans TC",
-    "Microsoft JhengHei",
-    "Apple SD Gothic Neo",
-    "Noto Sans KR",
-    "Segoe UI",
-    sans-serif;
+  font-family: "Plus Jakarta Sans", "Noto Sans JP", "Noto Sans TC", -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -489,17 +480,17 @@ a {
   letter-spacing: 0;
 }
 
-.chant-line.chorus .chant-text {
+.chant-line.chorus .chant-type-label {
   color: var(--chorus);
   font-weight: 800;
 }
 
-.chant-line.gesture .chant-text {
+.chant-line.gesture .chant-type-label {
   color: var(--gesture);
   font-weight: 800;
 }
 
-.chant-line.clap .chant-text {
+.chant-line.clap .chant-type-label {
   color: var(--clap);
   font-weight: 800;
 }
@@ -520,16 +511,57 @@ a {
 .chant-markers {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 4px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
 .chant-marker {
-  --marker-color: #b8a024;
-  color: var(--marker-color);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.55;
+  display: inline-block;
+  font-size: 18px;
+  line-height: 1.4;
+  opacity: 0.85;
+}
+
+.chant-marker.active-point {
+  opacity: 1;
+}
+
+.active-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 4px;
+  background: var(--marker-color);
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  animation: pulse-glow 1.2s infinite ease-in-out;
+}
+
+.chant-marker.upcoming-point,
+.karaoke-marker.upcoming-point {
+  opacity: 1;
+}
+
+.line-countdown-top {
+  display: block;
+  font-size: 20px;
+  font-weight: 900;
+  color: #ff9500;
+  margin-bottom: 4px;
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.05);
+  }
 }
 
 /* ==========================================================
@@ -584,8 +616,20 @@ a {
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
-  mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 82%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 82%, transparent 100%);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 14%,
+    black 82%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 14%,
+    black 82%,
+    transparent 100%
+  );
 }
 
 .karaoke-scroll-list::-webkit-scrollbar {
@@ -615,9 +659,7 @@ a {
   cursor: pointer;
   touch-action: pan-y;
   -webkit-tap-highlight-color: transparent;
-  transition:
-    color 0.12s ease-out,
-    opacity 0.12s ease-out;
+  transition: color 0.12s ease-out, opacity 0.12s ease-out;
 }
 
 .karaoke-line:focus {
@@ -642,9 +684,31 @@ a {
   letter-spacing: -0.015em;
 }
 
+.karaoke-line.chorus {
+  color: var(--chorus);
+}
+
+.karaoke-line.gesture {
+  color: var(--gesture);
+}
+
+.karaoke-line.clap {
+  color: var(--clap);
+}
+
 .karaoke-line.active.chorus {
   color: var(--chorus);
   text-shadow: 0 0 1px color-mix(in srgb, var(--chorus) 35%, transparent);
+}
+
+.karaoke-line.active.gesture {
+  color: var(--gesture);
+  text-shadow: 0 0 1px color-mix(in srgb, var(--gesture) 35%, transparent);
+}
+
+.karaoke-line.active.clap {
+  color: var(--clap);
+  text-shadow: 0 0 1px color-mix(in srgb, var(--clap) 35%, transparent);
 }
 
 .karaoke-line.active::after {
@@ -674,19 +738,15 @@ a {
 /* 附在歌詞行上的手勢/拍手標記（卡拉OK，純文字） */
 .karaoke-markers {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .karaoke-marker {
-  --marker-color: #b8a024;
   display: inline-block;
   margin: 0 4px;
-  color: var(--marker-color);
-  font-size: clamp(14px, 3.4vw, 18px);
-  font-weight: 600;
+  font-size: clamp(20px, 4.5vw, 26px);
   line-height: 1.4;
-  opacity: 0.45;
-  transition: opacity 0.15s ease-out;
+  opacity: 0.7;
 }
 
 .karaoke-marker.point-active {

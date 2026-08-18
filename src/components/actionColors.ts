@@ -1,9 +1,9 @@
 import type { OuenAction, OuenActionType } from "../types";
 
 export const ACTION_COLOR: Record<OuenActionType, string> = {
-  chorus: "#b8a024",
-  gesture: "#b85003",
-  clap: "#c290b5",
+  chorus: "#d97706",
+  gesture: "#ea580c",
+  clap: "#db2777",
 };
 
 export const ACTION_LABEL: Record<OuenActionType, string> = {
