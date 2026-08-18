@@ -234,7 +234,7 @@ export function Player({
         let maxAllowedEnd = unlockedSegment.length > 0
           ? boundaryEnd - unlockedSegment.length * 0.1
           : (duration > 0 ? duration : 9999);
-        
+
         const newEnd = Number(Math.min(maxAllowedEnd, Math.max(next[idx].start + 0.1, next[idx].end + delta)).toFixed(2));
         next[idx].end = newEnd;
 
@@ -259,7 +259,7 @@ export function Player({
           }
         });
 
-        // 自動寫入硬碟 JSON 檔（數字由小到大排序）
+        // 自動寫入硬碟 JSON 檔
         fetch("/api/save-song-data", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -274,6 +274,67 @@ export function Player({
       });
     },
     [currentId, lyrics, lockedLines, duration],
+  );
+
+  const handleSetLineStart = useCallback(
+    (idx: number, targetStart: number) => {
+      if (lockedLines.has(idx)) return;
+
+      setLyricsState((prevLyrics) => {
+        const next = prevLyrics.map((l) => ({ ...l }));
+        if (!next[idx]) return prevLyrics;
+
+        // 限制開頭時間不能比上一句還前面（上一句存在時，下限為上一句 end）
+        let minStart = 0;
+        if (idx > 0 && next[idx - 1]) {
+          minStart = next[idx - 1].end;
+        }
+
+        const validStart = Math.max(minStart, targetStart);
+        const currentStart = next[idx].start;
+        const delta = validStart - currentStart;
+
+        // 找到從 idx 開始直到遇到鎖定行或歌尾的所有未鎖定行
+        let unlockedSegment: number[] = [];
+        for (let i = idx; i < next.length; i++) {
+          if (lockedLines.has(i)) break;
+          unlockedSegment.push(i);
+        }
+
+        if (unlockedSegment.length === 0) return prevLyrics;
+
+        // 設定本句 start 為 validStart，保留各句原本長度，平移後續所有未鎖定行
+        unlockedSegment.forEach((lineIdx) => {
+          const l = next[lineIdx];
+          const newStart = Number(Math.max(minStart, l.start + delta).toFixed(2));
+          const newEnd = Number(Math.max(newStart + 0.1, l.end + delta).toFixed(2));
+          l.start = newStart;
+          l.end = newEnd;
+        });
+
+        // 同步修改原陣列
+        next.forEach((l, i) => {
+          if (lyrics[i]) {
+            lyrics[i].start = l.start;
+            lyrics[i].end = l.end;
+          }
+        });
+
+        // 自動寫入硬碟 JSON 檔
+        fetch("/api/save-song-data", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            songId: currentId,
+            lyrics: next,
+            lockedLines: Array.from(lockedLines).sort((a, b) => a - b),
+          }),
+        }).catch((err) => console.error("Save error:", err));
+
+        return next;
+      });
+    },
+    [currentId, lyrics, lockedLines],
   );
 
   const [devMode, setDevMode] = useState(false);
@@ -346,6 +407,7 @@ export function Player({
           currentTime={currentTime}
           onSeek={seekTo}
           onAdjustLineTime={devMode ? handleAdjustLineTime : undefined}
+          onSetLineStart={devMode ? handleSetLineStart : undefined}
           lockedLines={lockedLines}
           onToggleLock={devMode ? handleToggleLock : undefined}
           devMode={devMode}
@@ -366,6 +428,7 @@ export function Player({
             currentTime={currentTime}
             onSeek={seekTo}
             onAdjustLineTime={devMode ? handleAdjustLineTime : undefined}
+            onSetLineStart={devMode ? handleSetLineStart : undefined}
             lockedLines={lockedLines}
             onToggleLock={devMode ? handleToggleLock : undefined}
             devMode={devMode}

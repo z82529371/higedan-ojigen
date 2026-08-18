@@ -15,6 +15,7 @@ interface LyricsAreaProps {
   currentTime: number;
   onSeek: (time: number) => void;
   onAdjustLineTime?: (lineIndex: number, delta: number) => void;
+  onSetLineStart?: (lineIndex: number, targetStart: number) => void;
   lockedLines?: Set<number>;
   onToggleLock?: (lineIndex: number) => void;
   devMode?: boolean;
@@ -107,6 +108,7 @@ export const LyricsArea = memo(function LyricsArea({
   currentTime,
   onSeek,
   onAdjustLineTime,
+  onSetLineStart,
   lockedLines,
   onToggleLock,
   devMode,
@@ -198,20 +200,20 @@ export const LyricsArea = memo(function LyricsArea({
                     {item.chorus ? "合唱" : "歌詞"}
                   </span>
                   {onAdjustLineTime && (
-                    <span onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                    <span onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", marginTop: "4px" }}>
                       {onToggleLock && (
                         <button
                           type="button"
                           style={{
-                            padding: "1px 6px",
-                            fontSize: "10px",
-                            background: lockedLines?.has(item.lineIndex) ? "#ff3b30" : "#eee",
+                            padding: "4px 10px",
+                            fontSize: "13px",
+                            background: lockedLines?.has(item.lineIndex) ? "#ff3b30" : "#f0f0f0",
                             color: lockedLines?.has(item.lineIndex) ? "#fff" : "#333",
-                            borderRadius: "3px",
+                            borderRadius: "6px",
                             border: "1px solid #ccc",
                             cursor: "pointer",
                             fontWeight: "bold",
-                            marginRight: "4px"
+                            marginRight: "6px"
                           }}
                           onClick={() => onToggleLock(item.lineIndex)}
                         >
@@ -220,13 +222,48 @@ export const LyricsArea = memo(function LyricsArea({
                       )}
                       {!lockedLines?.has(item.lineIndex) && (
                         <>
-                          <span style={{ fontSize: "11px", color: "#666", marginRight: "2px" }}>切分對齊:</span>
-                          <button type="button" style={{ padding: "1px 5px", fontSize: "10px" }} onClick={() => onAdjustLineTime(item.lineIndex, -5)}>-5s</button>
-                          <button type="button" style={{ padding: "1px 5px", fontSize: "10px" }} onClick={() => onAdjustLineTime(item.lineIndex, -1)}>-1s</button>
-                          <button type="button" style={{ padding: "1px 5px", fontSize: "10px" }} onClick={() => onAdjustLineTime(item.lineIndex, -0.1)}>-0.1s</button>
-                          <button type="button" style={{ padding: "1px 5px", fontSize: "10px" }} onClick={() => onAdjustLineTime(item.lineIndex, 0.1)}>+0.1s</button>
-                          <button type="button" style={{ padding: "1px 5px", fontSize: "10px" }} onClick={() => onAdjustLineTime(item.lineIndex, 1)}>+1s</button>
-                          <button type="button" style={{ padding: "1px 5px", fontSize: "10px" }} onClick={() => onAdjustLineTime(item.lineIndex, 5)}>+5s</button>
+                          <span style={{ fontSize: "13px", color: "#555", fontWeight: "600", marginRight: "2px" }}>切分對齊:</span>
+                          <button type="button" style={{ padding: "4px 8px", fontSize: "13px", borderRadius: "5px", border: "1px solid #ccc", background: "#fff", cursor: "pointer" }} onClick={() => onAdjustLineTime(item.lineIndex, -5)}>-5s</button>
+                          <button type="button" style={{ padding: "4px 8px", fontSize: "13px", borderRadius: "5px", border: "1px solid #ccc", background: "#fff", cursor: "pointer" }} onClick={() => onAdjustLineTime(item.lineIndex, -1)}>-1s</button>
+                          <button type="button" style={{ padding: "4px 8px", fontSize: "13px", borderRadius: "5px", border: "1px solid #ccc", background: "#fff", cursor: "pointer" }} onClick={() => onAdjustLineTime(item.lineIndex, -0.1)}>-0.1s</button>
+                          <button type="button" style={{ padding: "4px 8px", fontSize: "13px", borderRadius: "5px", border: "1px solid #ccc", background: "#fff", cursor: "pointer" }} onClick={() => onAdjustLineTime(item.lineIndex, 0.1)}>+0.1s</button>
+                          <button type="button" style={{ padding: "4px 8px", fontSize: "13px", borderRadius: "5px", border: "1px solid #ccc", background: "#fff", cursor: "pointer" }} onClick={() => onAdjustLineTime(item.lineIndex, 1)}>+1s</button>
+                          <button type="button" style={{ padding: "4px 8px", fontSize: "13px", borderRadius: "5px", border: "1px solid #ccc", background: "#fff", cursor: "pointer" }} onClick={() => onAdjustLineTime(item.lineIndex, 5)}>+5s</button>
+                          {onSetLineStart && (
+                            <span style={{ marginLeft: "10px", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                              <span style={{ fontSize: "13px", color: "#d97706", fontWeight: "bold" }}>開頭秒數:</span>
+                              <input
+                                type="number"
+                                step="0.01"
+                                defaultValue={item.line.start}
+                                key={item.line.start}
+                                style={{
+                                  width: "72px",
+                                  padding: "3px 6px",
+                                  fontSize: "13px",
+                                  fontWeight: "bold",
+                                  border: "1.5px solid #f59e0b",
+                                  borderRadius: "5px",
+                                  background: "#fffbe6",
+                                  textAlign: "center"
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    const val = parseFloat((e.target as HTMLInputElement).value);
+                                    if (!isNaN(val) && val >= 0) {
+                                      onSetLineStart(item.lineIndex, val);
+                                    }
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  if (!isNaN(val) && val >= 0 && val !== item.line.start) {
+                                    onSetLineStart(item.lineIndex, val);
+                                  }
+                                }}
+                              />
+                            </span>
+                          )}
                         </>
                       )}
                     </span>
@@ -339,15 +376,15 @@ export const LyricsArea = memo(function LyricsArea({
                       <button
                         type="button"
                         style={{
-                          padding: "1px 5px",
-                          fontSize: "9px",
-                          background: lockedLines?.has(row.lineIndex) ? "#ff3b30" : "#eee",
+                          padding: "3px 8px",
+                          fontSize: "11px",
+                          background: lockedLines?.has(row.lineIndex) ? "#ff3b30" : "#f0f0f0",
                           color: lockedLines?.has(row.lineIndex) ? "#fff" : "#333",
-                          borderRadius: "3px",
+                          borderRadius: "4px",
                           border: "1px solid #ccc",
                           cursor: "pointer",
                           fontWeight: "bold",
-                          marginRight: "2px"
+                          marginRight: "4px"
                         }}
                         onClick={() => onToggleLock(row.lineIndex)}
                       >
@@ -356,12 +393,47 @@ export const LyricsArea = memo(function LyricsArea({
                     )}
                     {!lockedLines?.has(row.lineIndex) && (
                       <>
-                        <button type="button" style={{ padding: "1px 3px", fontSize: "9px" }} onClick={() => onAdjustLineTime(row.lineIndex, -5)}>-5s</button>
-                        <button type="button" style={{ padding: "1px 3px", fontSize: "9px" }} onClick={() => onAdjustLineTime(row.lineIndex, -1)}>-1s</button>
-                        <button type="button" style={{ padding: "1px 3px", fontSize: "9px" }} onClick={() => onAdjustLineTime(row.lineIndex, -0.1)}>-0.1s</button>
-                        <button type="button" style={{ padding: "1px 3px", fontSize: "9px" }} onClick={() => onAdjustLineTime(row.lineIndex, 0.1)}>+0.1s</button>
-                        <button type="button" style={{ padding: "1px 3px", fontSize: "9px" }} onClick={() => onAdjustLineTime(row.lineIndex, 1)}>+1s</button>
-                        <button type="button" style={{ padding: "1px 3px", fontSize: "9px" }} onClick={() => onAdjustLineTime(row.lineIndex, 5)}>+5s</button>
+                        <button type="button" style={{ padding: "3px 6px", fontSize: "11px", borderRadius: "4px", border: "1px solid #ccc", background: "#fff", cursor: "pointer" }} onClick={() => onAdjustLineTime(row.lineIndex, -5)}>-5s</button>
+                        <button type="button" style={{ padding: "3px 6px", fontSize: "11px", borderRadius: "4px", border: "1px solid #ccc", background: "#fff", cursor: "pointer" }} onClick={() => onAdjustLineTime(row.lineIndex, -1)}>-1s</button>
+                        <button type="button" style={{ padding: "3px 6px", fontSize: "11px", borderRadius: "4px", border: "1px solid #ccc", background: "#fff", cursor: "pointer" }} onClick={() => onAdjustLineTime(row.lineIndex, -0.1)}>-0.1s</button>
+                        <button type="button" style={{ padding: "3px 6px", fontSize: "11px", borderRadius: "4px", border: "1px solid #ccc", background: "#fff", cursor: "pointer" }} onClick={() => onAdjustLineTime(row.lineIndex, 0.1)}>+0.1s</button>
+                        <button type="button" style={{ padding: "3px 6px", fontSize: "11px", borderRadius: "4px", border: "1px solid #ccc", background: "#fff", cursor: "pointer" }} onClick={() => onAdjustLineTime(row.lineIndex, 1)}>+1s</button>
+                        <button type="button" style={{ padding: "3px 6px", fontSize: "11px", borderRadius: "4px", border: "1px solid #ccc", background: "#fff", cursor: "pointer" }} onClick={() => onAdjustLineTime(row.lineIndex, 5)}>+5s</button>
+                        {onSetLineStart && (
+                          <span style={{ marginLeft: "6px", display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                            <span style={{ fontSize: "11px", color: "#d97706", fontWeight: "bold" }}>開頭:</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              defaultValue={row.line.start}
+                              key={row.line.start}
+                              style={{
+                                width: "60px",
+                                padding: "2px 4px",
+                                fontSize: "11px",
+                                fontWeight: "bold",
+                                border: "1.5px solid #f59e0b",
+                                borderRadius: "4px",
+                                background: "#fffbe6",
+                                textAlign: "center"
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  const val = parseFloat((e.target as HTMLInputElement).value);
+                                  if (!isNaN(val) && val >= 0) {
+                                    onSetLineStart(row.lineIndex, val);
+                                  }
+                                }
+                              }}
+                              onBlur={(e) => {
+                                const val = parseFloat(e.target.value);
+                                if (!isNaN(val) && val >= 0 && val !== row.line.start) {
+                                  onSetLineStart(row.lineIndex, val);
+                                }
+                              }}
+                            />
+                          </span>
+                        )}
                       </>
                     )}
                   </span>
