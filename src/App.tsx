@@ -44,13 +44,25 @@ export default function App() {
 
   const selected = data.songs.find((s) => s.meta.id === selectedId);
   if (selected) {
+    const index = data.songs.findIndex((s) => s.meta.id === selectedId);
     return (
       <Player
+        key={selected.song.id}
         audio={selected.song.audio}
         title={selected.song.title}
+        note={selected.song.note}
         lyrics={selected.song.lyrics}
         ouenPoints={selected.song.ouenPoints}
         audioMissing={selected.audioMissing}
+        songList={data.songs.map(({ meta, audioMissing: missing }) => ({
+          id: meta.id,
+          title: meta.title,
+          audioMissing: missing,
+        }))}
+        currentId={selected.song.id}
+        onPrev={index > 0 ? () => setSelectedId(data.songs[index - 1].meta.id) : undefined}
+        onNext={index < data.songs.length - 1 ? () => setSelectedId(data.songs[index + 1].meta.id) : undefined}
+        onSelectSong={(id) => setSelectedId(id)}
         onBack={() => setSelectedId(null)}
       />
     );

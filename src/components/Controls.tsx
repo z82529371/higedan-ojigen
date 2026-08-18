@@ -9,6 +9,8 @@ interface ControlsProps {
   duration: number;
   speed: number;
   disabled: boolean;
+  onPrev?: () => void;
+  onNext?: () => void;
   onTogglePlay: () => void;
   onSeekTo: (time: number) => void;
   onSeekBy: (delta: number) => void;
@@ -27,6 +29,8 @@ export const Controls = memo(function Controls({
   duration,
   speed,
   disabled,
+  onPrev,
+  onNext,
   onTogglePlay,
   onSeekTo,
   onSeekBy,
@@ -53,6 +57,9 @@ export const Controls = memo(function Controls({
         </span>
       </div>
       <div className="controls-buttons">
+        <button type="button" onClick={onPrev} disabled={disabled || !onPrev} aria-label="上一首">
+          ⏮
+        </button>
         <button type="button" onClick={() => onSeekBy(-5)} disabled={disabled}>
           −5
         </button>
@@ -61,6 +68,9 @@ export const Controls = memo(function Controls({
         </button>
         <button type="button" onClick={() => onSeekBy(5)} disabled={disabled}>
           +5
+        </button>
+        <button type="button" onClick={onNext} disabled={disabled || !onNext} aria-label="下一首">
+          ⏭
         </button>
         <button type="button" onClick={onReplay} disabled={disabled}>
           重播

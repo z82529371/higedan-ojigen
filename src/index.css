@@ -240,6 +240,10 @@ a {
 }
 
 .song-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 28px;
 }
 
@@ -265,6 +269,43 @@ a {
 .back-btn:focus-visible {
   outline: 3px solid var(--brand-focus);
   outline-offset: 2px;
+}
+
+.setlist-btn {
+  min-height: 40px;
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid #dfe3e7;
+  border-radius: 999px;
+  background: #f5f6f7;
+  box-shadow: none;
+  cursor: pointer;
+  color: #4b5056;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.setlist-btn:hover {
+  border-color: #cfd5d9;
+  background: #eceff1;
+  color: #17191c;
+}
+
+.setlist-btn:focus-visible {
+  outline: 3px solid var(--brand-focus);
+  outline-offset: 2px;
+}
+
+.song-note {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius);
+  background: var(--brand-soft);
+  color: #2e6f67;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
 }
 
 .song-title-row {
@@ -804,4 +845,132 @@ a {
   .song-bottom-bar {
     width: calc(100vw - 24px);
   }
+}
+
+/* ==========================================================
+   Setlist 側拉歌單（drawer）
+========================================================== */
+
+.setlist-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(24, 28, 32, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-out;
+}
+
+.setlist-drawer-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.setlist-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(380px, 88vw);
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  box-shadow: -12px 0 32px rgba(24, 28, 32, 0.18);
+  transform: translateX(100%);
+  transition: transform 0.22s ease-out;
+}
+
+.setlist-drawer-backdrop.open .setlist-drawer {
+  transform: translateX(0);
+}
+
+.setlist-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding: 22px 20px 14px;
+  border-bottom: 1px solid #eceef0;
+}
+
+.setlist-drawer-header h2 {
+  margin: 0;
+  color: #111214;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.setlist-drawer-close {
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #5f6368;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.setlist-drawer-close:hover {
+  background: #f1f2f3;
+  color: #17181a;
+}
+
+.setlist-drawer-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 8px 0 24px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.setlist-drawer-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 20px;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: #202124;
+  text-align: left;
+  cursor: pointer;
+}
+
+.setlist-drawer-item:hover {
+  background: #f7f8f9;
+}
+
+.setlist-drawer-item.active {
+  border-left-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.setlist-drawer-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setlist-drawer-item.active .setlist-drawer-name {
+  color: var(--brand-strong);
+}
+
+.setlist-drawer-status {
+  flex: 0 0 auto;
+  color: var(--gesture);
+  font-size: 12px;
+  font-weight: 700;
 }

@@ -4,17 +4,43 @@ import { currentLineIndex, isChorusActive } from "../time/sync";
 import { formatTime } from "../time/format";
 import { Controls } from "./Controls";
 import { LyricsArea, type LyricsMode } from "./LyricsArea";
+import { SetlistDrawer } from "./SetlistDrawer";
+
+interface SetlistEntry {
+  id: string;
+  title: string;
+  audioMissing: boolean;
+}
 
 interface PlayerProps {
   audio: string;
   title: string;
+  note?: string;
   lyrics: LyricLine[];
   ouenPoints: OuenPoint[];
   audioMissing: boolean;
+  songList: SetlistEntry[];
+  currentId: string;
+  onPrev?: () => void;
+  onNext?: () => void;
+  onSelectSong: (id: string) => void;
   onBack: () => void;
 }
 
-export function Player({ audio, title, lyrics, ouenPoints, audioMissing, onBack }: PlayerProps) {
+export function Player({
+  audio,
+  title,
+  note,
+  lyrics,
+  ouenPoints,
+  audioMissing,
+  songList,
+  currentId,
+  onPrev,
+  onNext,
+  onSelectSong,
+  onBack,
+}: PlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -22,6 +48,7 @@ export function Player({ audio, title, lyrics, ouenPoints, audioMissing, onBack 
   const [speed, setSpeed] = useState(1);
   const [ended, setEnded] = useState(false);
   const [mode, setMode] = useState<LyricsMode>("karaoke");
+  const [setlistOpen, setSetlistOpen] = useState(false);
 
   useEffect(() => {
     const el = new Audio(audio);
@@ -131,6 +158,9 @@ export function Player({ audio, title, lyrics, ouenPoints, audioMissing, onBack 
         <button type="button" className="back-btn" onClick={onBack}>
           ‹ 返回歌單
         </button>
+        <button type="button" className="setlist-btn" onClick={() => setSetlistOpen(true)}>
+          ☰ 曲目
+        </button>
       </header>
 
       <div className="song-title-row">
@@ -139,6 +169,8 @@ export function Player({ audio, title, lyrics, ouenPoints, audioMissing, onBack 
           {audioMissing ? "缺音檔" : "音檔就緒"}
         </span>
       </div>
+
+      {note && <p className="song-note">{note}</p>}
 
       {audioMissing && (
         <div className="song-notice">
@@ -196,11 +228,24 @@ export function Player({ audio, title, lyrics, ouenPoints, audioMissing, onBack 
         duration={duration}
         speed={speed}
         disabled={audioMissing}
+        onPrev={onPrev}
+        onNext={onNext}
         onTogglePlay={togglePlay}
         onSeekTo={seekTo}
         onSeekBy={seekBy}
         onReplay={replay}
         onSpeedChange={setSpeed}
+      />
+
+      <SetlistDrawer
+        open={setlistOpen}
+        entries={songList}
+        currentId={currentId}
+        onClose={() => setSetlistOpen(false)}
+        onSelect={(id) => {
+          setSetlistOpen(false);
+          onSelectSong(id);
+        }}
       />
     </div>
   );
