@@ -78,6 +78,41 @@ describe("parseSong", () => {
     expect(parseSong(raw, GESTURES)).toEqual(raw);
   });
 
+  it("parses an optional note field", () => {
+    const raw = {
+      id: "subtitle",
+      title: "Subtitle",
+      audio: "audio/subtitle.mp3",
+      note: "開場有 intro，請提早準備應援",
+      lyrics: [],
+      ouenPoints: [],
+    };
+    expect(parseSong(raw, GESTURES)).toEqual(raw);
+  });
+
+  it("omits note from the result when absent", () => {
+    const raw = {
+      id: "subtitle",
+      title: "Subtitle",
+      audio: "audio/subtitle.mp3",
+      lyrics: [],
+      ouenPoints: [],
+    };
+    expect(parseSong(raw, GESTURES)).not.toHaveProperty("note");
+  });
+
+  it("rejects an empty note string", () => {
+    const raw = {
+      id: "subtitle",
+      title: "Subtitle",
+      audio: "audio/subtitle.mp3",
+      note: "",
+      lyrics: [],
+      ouenPoints: [],
+    };
+    expect(() => parseSong(raw, GESTURES)).toThrow(/note/);
+  });
+
   it("rejects a lyric line whose end is not after its start", () => {
     const raw = {
       id: "x",

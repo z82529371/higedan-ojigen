@@ -125,6 +125,10 @@ export function parseSong(raw: unknown, gestures: readonly string[]): Song {
   const context = `歌曲「${id}」`;
   const title = requireString(raw, "title", context);
   const audio = requireString(raw, "audio", context);
+  const result: Song = { id, title, audio, lyrics: [], ouenPoints: [] };
+  if (raw.note !== undefined) {
+    result.note = requireString(raw, "note", context);
+  }
 
   if (!Array.isArray(raw.lyrics)) {
     throw new Error(`${context} 缺少「lyrics」陣列`);
@@ -155,5 +159,7 @@ export function parseSong(raw: unknown, gestures: readonly string[]): Song {
     }
   }
 
-  return { id, title, audio, lyrics, ouenPoints };
+  result.lyrics = lyrics;
+  result.ouenPoints = ouenPoints;
+  return result;
 }

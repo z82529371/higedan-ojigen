@@ -2,6 +2,7 @@
   "id": "sample",
   "title": "Sample Song",
   "audio": "audio/sample.mp3",
+  "note": "這是一首範例曲，測試演唱會提示的顯示位置。",
   "lyrics": [
     { "start": 0.0, "end": 3.0, "text": "これはテストです", "romaji": "kore wa tesuto desu" },
     { "start": 3.0, "end": 6.0, "text": "みんなで歌いましょう" },

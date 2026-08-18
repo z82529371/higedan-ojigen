@@ -35,6 +35,7 @@ export interface Song {
   id: string;
   title: string;
   audio: string;
+  note?: string;
   lyrics: LyricLine[];
   ouenPoints: OuenPoint[];
 }
