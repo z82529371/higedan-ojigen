@@ -61,8 +61,8 @@ function parseLyricLine(raw: unknown, context: string, index: number): LyricLine
   }
   const text = requireString(raw, "text", lineContext);
   const result: LyricLine = { start, end, text };
-  if (raw.romaji !== undefined) {
-    result.romaji = requireString(raw, "romaji", lineContext);
+  if (typeof raw.romaji === "string" && raw.romaji.length > 0) {
+    result.romaji = raw.romaji;
   }
   return result;
 }
@@ -78,8 +78,8 @@ function parseAction(raw: unknown, context: string, gestures: readonly string[])
       if (raw.text !== undefined) {
         result.text = requireString(raw, "text", `${context} 的合唱`);
       }
-      if (raw.romaji !== undefined) {
-        result.romaji = requireString(raw, "romaji", `${context} 的合唱`);
+      if (typeof raw.romaji === "string" && raw.romaji.length > 0) {
+        result.romaji = raw.romaji;
       }
       return result;
     }
@@ -127,7 +127,10 @@ export function parseSong(raw: unknown, gestures: readonly string[]): Song {
   const audio = requireString(raw, "audio", context);
   const result: Song = { id, title, audio, lyrics: [], ouenPoints: [] };
   if (raw.note !== undefined) {
-    result.note = requireString(raw, "note", context);
+    if (typeof raw.note !== "string" || raw.note.trim().length === 0) {
+      throw new Error(`${context} 缺少欄位「note」（須為非空字串）`);
+    }
+    result.note = raw.note.trim();
   }
 
   if (!Array.isArray(raw.lyrics)) {
@@ -161,5 +164,8 @@ export function parseSong(raw: unknown, gestures: readonly string[]): Song {
 
   result.lyrics = lyrics;
   result.ouenPoints = ouenPoints;
+  if (Array.isArray(raw.lockedLines)) {
+    result.lockedLines = raw.lockedLines.filter((x): x is number => typeof x === "number");
+  }
   return result;
 }

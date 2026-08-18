@@ -53,6 +53,7 @@ export default function App() {
         note={selected.song.note}
         lyrics={selected.song.lyrics}
         ouenPoints={selected.song.ouenPoints}
+        initialLockedLines={selected.song.lockedLines}
         audioMissing={selected.audioMissing}
         songList={data.songs.map(({ meta, audioMissing: missing }) => ({
           id: meta.id,

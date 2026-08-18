@@ -38,6 +38,7 @@ export interface Song {
   note?: string;
   lyrics: LyricLine[];
   ouenPoints: OuenPoint[];
+  lockedLines?: number[];
 }
 
 export interface SongMeta {
