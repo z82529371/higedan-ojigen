@@ -54,6 +54,20 @@ function isLineInChorus(line: LyricLine, ouenPoints: OuenPoint[]): boolean {
   );
 }
 
+function getLineActionClasses(line: LyricLine, ouenPoints: OuenPoint[]): string {
+  const classes: string[] = [];
+  ouenPoints.forEach((p) => {
+    if (line.start < p.end && line.end > p.start) {
+      p.actions.forEach((a) => {
+        if (!classes.includes(a.type)) {
+          classes.push(a.type);
+        }
+      });
+    }
+  });
+  return classes.join(" ");
+}
+
 function isPointActive(point: OuenPoint, time: number): boolean {
   return point.start <= time && time < point.end;
 }
@@ -80,11 +94,20 @@ function buildMarkers(lyrics: LyricLine[], ouenPoints: OuenPoint[]): BuiltMarker
     if (markers.length === 0) {
       continue;
     }
-    const lineIndex = currentLineIndex(point.start, lyrics);
-    if (lineIndex !== null) {
-      const existing = byLine.get(lineIndex) ?? [];
-      existing.push(...markers);
-      byLine.set(lineIndex, existing);
+    // 方案 A：找到所有與此應援區間（point.start ~ point.end）有交集的歌詞行
+    const matchedLineIndices: number[] = [];
+    lyrics.forEach((line, idx) => {
+      if (line.start < point.end && line.end > point.start) {
+        matchedLineIndices.push(idx);
+      }
+    });
+
+    if (matchedLineIndices.length > 0) {
+      matchedLineIndices.forEach((idx) => {
+        const existing = byLine.get(idx) ?? [];
+        existing.push(...markers);
+        byLine.set(idx, existing);
+      });
     } else {
       standalone.push({ time: point.start, markers, point });
     }
@@ -168,7 +191,7 @@ export const LyricsArea = memo(function LyricsArea({
         {readItems.map((item, i) => {
           if (item.kind === "line") {
             const isActive = item.lineIndex === currentIndex;
-            const cls = `${item.chorus ? "chorus" : "lyrics"}${isActive ? " active" : ""}`;
+            const cls = `${isActive ? "active" : ""}`;
             return (
               <div
                 key={i}
@@ -177,7 +200,7 @@ export const LyricsArea = memo(function LyricsArea({
                 ref={(el) => {
                   rowRefs.current[i] = el as unknown as HTMLButtonElement;
                 }}
-                className={`chant-line ${cls}`}
+                className={`chant-line ${cls} ${getLineActionClasses(item.line, ouenPoints)}`}
                 onClick={() => onSeek(item.line.start)}
                 onKeyDown={(e) => { if (e.key === "Enter") onSeek(item.line.start); }}
               >
@@ -197,7 +220,13 @@ export const LyricsArea = memo(function LyricsArea({
                         {" · "}
                       </>
                     ) : null}
-                    {item.chorus ? "合唱" : "歌詞"}
+                    <span className="chant-type-label">
+                      {(() => {
+                        if (item.markers.length === 0) return "";
+                        const labels = Array.from(new Set(item.markers.map((m) => ACTION_LABEL[m.type])));
+                        return `(${labels.join("、")})`;
+                      })()}
+                    </span>
                   </span>
                   {onAdjustLineTime && (
                     <span onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", marginTop: "4px" }}>
@@ -269,21 +298,83 @@ export const LyricsArea = memo(function LyricsArea({
                     </span>
                   )}
                 </div>
-                {item.markers.length > 0 && (
-                  <div className="chant-markers">
-                    {item.markers.map((m, j) => (
-                      <span
-                        key={j}
-                        className="chant-marker"
-                        style={{ "--marker-color": m.color } as CSSProperties}
-                        title={ACTION_LABEL[m.type]}
-                      >
-                        {m.label}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <div className="chant-text">{item.line.text}</div>
+                {(() => {
+                  // 只在該應援區間（point.start ~ point.end）所涵蓋的第一行歌詞進行倒數
+                  const upcomingMarker = item.markers.find((m) => {
+                    const diff = m.point.start - currentTime;
+                    return diff > 0 && diff <= 3.0;
+                  });
+
+                  if (!upcomingMarker) return null;
+
+                  // 檢查本行是否為該應援區間涵蓋的第一行歌詞
+                  const firstCoveredLine = lyrics.find(
+                    (line) => line.start < upcomingMarker.point.end && line.end > upcomingMarker.point.start,
+                  );
+
+                  if (firstCoveredLine && firstCoveredLine.start === item.line.start) {
+                    const diff = upcomingMarker.point.start - currentTime;
+                    return <div className="line-countdown-top">⏳{Math.ceil(diff)}</div>;
+                  }
+
+                  return null;
+                })()}
+                {(() => {
+                  const hasParentheses = /\(.*?\)/.test(item.line.text);
+                  const visibleMarkers = item.markers.filter((m) => {
+                    // 如果歌詞含括號，文字口號與手勢已被垂直對齊顯示在括號上方，頂部列不重複顯示
+                    if (hasParentheses && (m.type === "gesture" || (m.label && item.line.text.includes(m.label)))) {
+                      return false;
+                    }
+                    return true;
+                  });
+                  if (visibleMarkers.length === 0) return null;
+
+                  return (
+                    <div className="chant-markers">
+                      {visibleMarkers.map((m, j) => {
+                        const active = isPointActive(m.point, currentTime);
+                        return (
+                          <span
+                            key={j}
+                            className={`chant-marker${active ? " active-point" : ""}`}
+                            style={{ "--marker-color": m.color } as CSSProperties}
+                            title={ACTION_LABEL[m.type]}
+                          >
+                            {m.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+                <div className="chant-text">
+                  {(() => {
+                    const text = item.line.text;
+                    const match = text.match(/^(.*?)\((.*?)\)(.*)$/);
+                    if (match && item.markers.length > 0) {
+                      const [, before, parenthesized, after] = match;
+                      const activeColor = item.markers[0]?.color ?? "#b8a024";
+                      const gestureMarker = item.markers.find((m) => m.type === "gesture");
+
+                      return (
+                        <>
+                          {before}
+                          <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", verticalAlign: "bottom" }}>
+                            {gestureMarker && (
+                              <span style={{ fontSize: "18px", lineHeight: "1.2", marginBottom: "2px" }}>
+                                {gestureMarker.label}
+                              </span>
+                            )}
+                            <span style={{ color: activeColor, fontWeight: 800 }}>({parenthesized})</span>
+                          </span>
+                          {after}
+                        </>
+                      );
+                    }
+                    return text;
+                  })()}
+                </div>
                 {item.line.romaji && <div className="chant-romaji">{item.line.romaji}</div>}
               </div>
             );
@@ -329,7 +420,7 @@ export const LyricsArea = memo(function LyricsArea({
                 : row.lineIndex < currentIndex
                   ? "past"
                   : "future";
-          const cls = state === "active" && chorusActive ? "active chorus" : state;
+          const cls = state;
           return (
             <div
               key={i}
@@ -338,26 +429,83 @@ export const LyricsArea = memo(function LyricsArea({
               ref={(el) => {
                 rowRefs.current[i] = el;
               }}
-              className={`karaoke-line ${cls}`}
+              className={`karaoke-line ${cls} ${getLineActionClasses(row.line, ouenPoints)}`}
               onClick={() => onSeek(row.line.start)}
               onKeyDown={(e) => { if (e.key === "Enter") onSeek(row.line.start); }}
             >
-              {row.markers.length > 0 && (
-                <span className="karaoke-markers">
-                  {row.markers.map((m, j) => (
-                    <span
-                      key={j}
-                      className={`karaoke-marker${isPointActive(m.point, currentTime) ? " point-active" : ""}`}
-                      style={{ "--marker-color": m.color } as CSSProperties}
-                      title={ACTION_LABEL[m.type]}
-                    >
-                      {m.label}
-                    </span>
-                  ))}
-                </span>
-              )}
+              {(() => {
+                const upcomingMarker = row.markers.find((m) => {
+                  const diff = m.point.start - currentTime;
+                  return diff > 0 && diff <= 3.0;
+                });
+
+                if (!upcomingMarker) return null;
+
+                const firstCoveredLine = lyrics.find(
+                  (line) => line.start < upcomingMarker.point.end && line.end > upcomingMarker.point.start,
+                );
+
+                if (firstCoveredLine && firstCoveredLine.start === row.line.start) {
+                  const diff = upcomingMarker.point.start - currentTime;
+                  return <div className="line-countdown-top">⏳{Math.ceil(diff)}</div>;
+                }
+
+                return null;
+              })()}
+              {(() => {
+                const hasParentheses = /\(.*?\)/.test(row.line.text);
+                const visibleMarkers = row.markers.filter((m) => {
+                  if (hasParentheses && (m.type === "gesture" || (m.label && row.line.text.includes(m.label)))) {
+                    return false;
+                  }
+                  return true;
+                });
+                if (visibleMarkers.length === 0) return null;
+
+                return (
+                  <span className="karaoke-markers">
+                    {visibleMarkers.map((m, j) => {
+                      const active = isPointActive(m.point, currentTime);
+                      return (
+                        <span
+                          key={j}
+                          className={`karaoke-marker${active ? " point-active" : ""}`}
+                          style={{ "--marker-color": m.color } as CSSProperties}
+                          title={ACTION_LABEL[m.type]}
+                        >
+                          {m.label}
+                        </span>
+                      );
+                    })}
+                  </span>
+                );
+              })()}
               <span className="karaoke-text">
-                {row.line.text}
+                {(() => {
+                  const text = row.line.text;
+                  const match = text.match(/^(.*?)\((.*?)\)(.*)$/);
+                  if (match && row.markers.length > 0) {
+                    const [, before, parenthesized, after] = match;
+                    const activeColor = row.markers[0]?.color ?? "#b8a024";
+                    const gestureMarker = row.markers.find((m) => m.type === "gesture");
+
+                    return (
+                      <>
+                        {before}
+                        <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", verticalAlign: "bottom" }}>
+                          {gestureMarker && (
+                            <span style={{ fontSize: "clamp(20px, 4.5vw, 26px)", lineHeight: "1.2", marginBottom: "2px" }}>
+                              {gestureMarker.label}
+                            </span>
+                          )}
+                          <span style={{ color: activeColor, fontWeight: 900 }}>({parenthesized})</span>
+                        </span>
+                        {after}
+                      </>
+                    );
+                  }
+                  return text;
+                })()}
                 {devMode && (
                   <>
                     <span style={{ fontSize: "11px", opacity: 0.7, marginLeft: "6px" }}>

@@ -1,0 +1,129 @@
+{
+  "id": "example-song",
+  "title": "應援點範例範本 (Example Template)",
+  "audio": "audio/example.m4a",
+  "lyrics": [
+    {
+      "start": 10.0,
+      "end": 15.0,
+      "text": "這是完整合唱整句歌詞的範例"
+    },
+    {
+      "start": 15.0,
+      "end": 20.0,
+      "text": "這是全場一起喊口號的範例"
+    },
+    {
+      "start": 20.0,
+      "end": 25.0,
+      "text": "這是四拍拍手的範例"
+    },
+    {
+      "start": 25.0,
+      "end": 30.0,
+      "text": "這是八拍拍手的範例"
+    },
+    {
+      "start": 30.0,
+      "end": 35.0,
+      "text": "這是揮手或特定手勢的範例"
+    },
+    {
+      "start": 35.0,
+      "end": 40.0,
+      "text": "這是組合型應援（合唱 + 拍手 + 手勢）的範例"
+    }
+  ],
+  "ouenPoints": [
+    {
+      "_comment": "1. 📢 【跟唱整句歌詞】（合唱金色，歌詞常駐金色高亮）",
+      "start": 10.0,
+      "end": 15.0,
+      "actions": [
+        {
+          "type": "chorus"
+        }
+      ]
+    },
+    {
+      "_comment": "2. 🗣️ 【喊歌詞以外的口號】（例如歌迷喊 Oh! / Yeah! / 團員名字）",
+      "start": 15.0,
+      "end": 20.0,
+      "actions": [
+        {
+          "type": "chorus",
+          "text": "Oh Oh!",
+          "romaji": "oh oh"
+        }
+      ]
+    },
+    {
+      "_comment": "3. 👏 【四拍拍手】（拍手粉紫色）",
+      "start": 20.0,
+      "end": 25.0,
+      "actions": [
+        {
+          "type": "clap",
+          "pattern": "👏 👏 👏 👏"
+        }
+      ]
+    },
+    {
+      "_comment": "4. 👏 【八拍拍手】（拍手粉紫色）",
+      "start": 25.0,
+      "end": 30.0,
+      "actions": [
+        {
+          "type": "clap",
+          "pattern": "👏 👏 👏 👏 👏 👏 👏 👏"
+        }
+      ]
+    },
+    {
+      "_comment": "5. 🙋 【手勢】（手勢橘紅色，可參考 public/gestures.json：✌️ 🤣 ☝️ 🙆 ✊ 🙌）",
+      "start": 30.0,
+      "end": 35.0,
+      "actions": [
+        {
+          "type": "gesture",
+          "gesture": "🙌"
+        }
+      ]
+    },
+    {
+      "_comment": "6. 🎉 【複合型應援】（同時拍手 + 手勢 + 喊口號）",
+      "start": 35.0,
+      "end": 40.0,
+      "actions": [
+        {
+          "type": "chorus",
+          "text": "Yeah!",
+          "romaji": "yeah"
+        },
+        {
+          "type": "clap",
+          "pattern": "👏 👏 👏 👏"
+        },
+        {
+          "type": "gesture",
+          "gesture": "🙌"
+        }
+      ]
+    },
+    {
+      "_comment": "7. 🔁 【多組秒數重複應援（使用 times 陣列）】（副歌重複出現相同的拍手/手勢時）",
+      "times": [
+        { "start": 40.0, "end": 45.0 },
+        { "start": 80.0, "end": 85.0 },
+        { "start": 120.0, "end": 125.0 }
+      ],
+      "actions": [
+        {
+          "type": "clap",
+          "pattern": "👏 👏 👏 👏"
+        }
+      ]
+    }
+  ],
+  "lockedLines": [0, 1, 2, 3, 4, 5]
+}
