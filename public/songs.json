@@ -1,5 +1,35 @@
 {
   "songs": [
-    { "id": "sample", "title": "Sample Song", "data": "data/sample.json" }
+    { "id": "stand-by-you", "title": "Stand By You", "data": "data/stand-by-you.json" },
+    { "id": "fire-ground", "title": "FIRE GROUND", "data": "data/fire-ground.json" },
+    { "id": "pretender", "title": "Pretender", "data": "data/pretender.json" },
+    { "id": "i-love", "title": "I LOVE...", "data": "data/i-love.json" },
+    { "id": "shukumei", "title": "宿命", "data": "data/shukumei.json" },
+    { "id": "yesterday", "title": "イエスタデイ", "data": "data/yesterday.json" },
+    { "id": "laughter", "title": "Laughter", "data": "data/laughter.json" },
+    { "id": "mixed-nuts", "title": "ミックスナッツ", "data": "data/mixed-nuts.json" },
+    { "id": "tattoo", "title": "TATTOO", "data": "data/tattoo.json" },
+    { "id": "soulsoup", "title": "soulsoup", "data": "data/soulsoup.json" },
+    { "id": "stardust", "title": "スターダスト", "data": "data/stardust.json" },
+    { "id": "make-me-wonder", "title": "Make Me Wonder", "data": "data/make-me-wonder.json" },
+    { "id": "takaga-i-love-you", "title": "たかがアイラブユー", "data": "data/takaga-i-love-you.json" },
+    { "id": "50-percent", "title": "50%", "data": "data/50-percent.json" },
+    { "id": "rashisa", "title": "らしさ", "data": "data/rashisa.json" },
+    { "id": "chessboard", "title": "Chessboard", "data": "data/chessboard.json" },
+    { "id": "115-man-kilo", "title": "115万キロのフィルム", "data": "data/115-man-kilo.json" },
+    { "id": "no-doubt", "title": "ノーダウト", "data": "data/no-doubt.json" },
+    { "id": "sweet-tweet", "title": "SWEET TWEET", "data": "data/sweet-tweet.json" },
+    { "id": "inu-ka-kyatto", "title": "犬かキャットかで死ぬまで喧嘩しよう！", "data": "data/inu-ka-kyatto.json" },
+    { "id": "itan-na-star", "title": "異端なスター", "data": "data/itan-na-star.json" },
+    { "id": "hajimari-no-asa", "title": "始まりの朝", "data": "data/hajimari-no-asa.json" },
+    { "id": "brothers", "title": "ブラザーズ", "data": "data/brothers.json" },
+    { "id": "whats-going-on", "title": "What's Going On?", "data": "data/whats-going-on.json" },
+    { "id": "clap-clap", "title": "Clap Clap", "data": "data/clap-clap.json" },
+    { "id": "rolling", "title": "Rolling", "data": "data/rolling.json" },
+    { "id": "55", "title": "55", "data": "data/55.json" },
+    { "id": "last-song", "title": "ラストソング", "data": "data/last-song.json" },
+    { "id": "parade", "title": "parade", "data": "data/parade.json" },
+    { "id": "urami-tsurami-kiwami", "title": "うらみつらみきわみ", "data": "data/urami-tsurami-kiwami.json" },
+    { "id": "anarchy-rejoice", "title": "Anarchy (Rejoice ver.)", "data": "data/anarchy-rejoice.json" }
   ]
 }
