@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { LyricLine, OuenPoint } from "../types";
-import { currentLineIndex, isChorusActive } from "../time/sync";
+import type { LyricLine, ResolvedOuenPoint } from "../types";
+import { currentLineIndex } from "../time/sync";
 import { formatTime } from "../time/format";
 import { Controls } from "./Controls";
 import { LyricsArea, type LyricsMode } from "./LyricsArea";
@@ -17,7 +17,7 @@ interface PlayerProps {
   title: string;
   note?: string;
   lyrics: LyricLine[];
-  ouenPoints: OuenPoint[];
+  ouenPoints: ResolvedOuenPoint[];
   initialLockedLines?: number[];
   audioMissing: boolean;
   songList: SetlistEntry[];
@@ -49,7 +49,7 @@ export function Player({
   const [duration, setDuration] = useState(0);
   const [speed, setSpeed] = useState(1);
   const [ended, setEnded] = useState(false);
-  const [mode, setMode] = useState<LyricsMode>("karaoke");
+  const [mode, setMode] = useState<LyricsMode>("read");
   const [setlistOpen, setSetlistOpen] = useState(false);
 
   useEffect(() => {
@@ -172,7 +172,6 @@ export function Player({
   }, []);
 
   const currentIndex = useMemo(() => currentLineIndex(currentTime, lyrics), [currentTime, lyrics]);
-  const chorusActive = useMemo(() => isChorusActive(currentTime, ouenPoints), [currentTime, ouenPoints]);
 
   const [lyricsState, setLyricsState] = useState<LyricLine[]>(lyrics);
   const [lockedLines, setLockedLines] = useState<Set<number>>(() => new Set(initialLockedLines ?? []));
@@ -403,7 +402,6 @@ export function Player({
           ouenPoints={ouenPoints}
           mode="read"
           currentIndex={currentIndex}
-          chorusActive={chorusActive}
           currentTime={currentTime}
           onSeek={seekTo}
           onAdjustLineTime={devMode ? handleAdjustLineTime : undefined}
@@ -424,7 +422,6 @@ export function Player({
             ouenPoints={ouenPoints}
             mode="karaoke"
             currentIndex={currentIndex}
-            chorusActive={chorusActive}
             currentTime={currentTime}
             onSeek={seekTo}
             onAdjustLineTime={devMode ? handleAdjustLineTime : undefined}

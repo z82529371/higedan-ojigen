@@ -1,17 +1,18 @@
 import { memo, useEffect, useMemo, useRef, type CSSProperties } from "react";
-import type { LyricLine, OuenActionType, OuenPoint } from "../types";
-import { currentLineIndex } from "../time/sync";
+import type { LyricLine, ResolvedOuenPoint } from "../types";
 import { formatTime } from "../time/format";
-import { ACTION_COLOR, ACTION_LABEL, actionLabel } from "./actionColors";
+import { ACTION_LABEL } from "./actionColors";
+import { buildMarkers, type LineMarker } from "../lyrics/markers";
+import { buildLineColoring, type LyricFragment } from "../lyrics/lyricColoring";
+import { coveringPoints, isLineCovered, lineActionTypes } from "../lyrics/coverage";
 
 export type LyricsMode = "read" | "karaoke";
 
 interface LyricsAreaProps {
   lyrics: LyricLine[];
-  ouenPoints: OuenPoint[];
+  ouenPoints: ResolvedOuenPoint[];
   mode: LyricsMode;
   currentIndex: number | null;
-  chorusActive: boolean;
   currentTime: number;
   onSeek: (time: number) => void;
   onAdjustLineTime?: (lineIndex: number, delta: number) => void;
@@ -21,98 +22,70 @@ interface LyricsAreaProps {
   devMode?: boolean;
 }
 
-interface LineMarker {
-  type: OuenActionType;
-  label: string;
-  color: string;
-  romaji?: string;
-  point: OuenPoint;
-}
-
-interface StandaloneRow {
-  time: number;
-  markers: LineMarker[];
-  point: OuenPoint;
-}
-
-interface BuiltMarkers {
-  byLine: Map<number, LineMarker[]>;
-  standalone: StandaloneRow[];
-}
-
 type ReadItem =
-  | { kind: "line"; line: LyricLine; lineIndex: number; markers: LineMarker[]; chorus: boolean }
-  | { kind: "standalone"; time: number; markers: LineMarker[] };
+  | { kind: "line"; line: LyricLine; lineIndex: number; markers: LineMarker[] }
+  | { kind: "standalone"; time: number; markers: LineMarker[]; point: ResolvedOuenPoint };
 
 type KaraokeRow =
   | { kind: "line"; line: LyricLine; lineIndex: number; markers: LineMarker[] }
-  | { kind: "standalone"; time: number; markers: LineMarker[]; point: OuenPoint };
+  | { kind: "standalone"; time: number; markers: LineMarker[]; point: ResolvedOuenPoint };
 
-function isLineInChorus(line: LyricLine, ouenPoints: OuenPoint[]): boolean {
-  return ouenPoints.some(
-    (p) => p.actions.some((a) => a.type === "chorus") && line.start < p.end && line.end > p.start,
+function actionLabelText(line: LyricLine, ouenPoints: ResolvedOuenPoint[]): string {
+  const labels = Array.from(new Set(lineActionTypes(line, ouenPoints).map((t) => ACTION_LABEL[t])));
+  return labels.length > 0 ? `(${labels.join("、")})` : "";
+}
+
+function upcomingPointForLine(line: LyricLine, ouenPoints: ResolvedOuenPoint[], currentTime: number): ResolvedOuenPoint | null {
+  return (
+    coveringPoints(line, ouenPoints).find((p) => {
+      const diff = p.start - currentTime;
+      return diff > 0 && diff <= 3.0;
+    }) ?? null
   );
 }
 
-function getLineActionClasses(line: LyricLine, ouenPoints: OuenPoint[]): string {
-  const classes: string[] = [];
-  ouenPoints.forEach((p) => {
-    if (line.start < p.end && line.end > p.start) {
-      p.actions.forEach((a) => {
-        if (!classes.includes(a.type)) {
-          classes.push(a.type);
-        }
-      });
+function isFirstCoveredLine(line: LyricLine, point: ResolvedOuenPoint, lyrics: LyricLine[]): boolean {
+  const first = lyrics.find((l) => isLineCovered(l, point));
+  return first !== undefined && first.start === line.start;
+}
+
+function renderLyricFragments(fragments: LyricFragment[], currentTime: number, isKaraoke: boolean = false) {
+  return fragments.map((f, i) => {
+    const hasMarkers = f.attachedMarkers && f.attachedMarkers.length > 0;
+    const textSpan = (
+      <span key="txt" style={f.color ? { color: f.color } : undefined}>
+        {f.text}
+      </span>
+    );
+
+    if (!hasMarkers) {
+      return textSpan;
     }
+
+    const markerCls = isKaraoke ? "karaoke-marker" : "chant-marker";
+    const activeCls = isKaraoke ? "point-active" : "active-point";
+
+    return (
+      <span key={i} className="inline-anchored-fragment">
+        <span className="inline-anchored-markers">
+          {f.attachedMarkers!.map((m, j) => {
+            const active = m.point.start <= currentTime && currentTime < m.point.end;
+            return (
+              <span
+                key={j}
+                className={`${markerCls}${active ? ` ${activeCls}` : ""}`}
+                style={{ "--marker-color": m.color } as CSSProperties}
+                title={ACTION_LABEL[m.type]}
+              >
+                {m.label}
+              </span>
+            );
+          })}
+        </span>
+        {textSpan}
+      </span>
+    );
   });
-  return classes.join(" ");
-}
-
-function isPointActive(point: OuenPoint, time: number): boolean {
-  return point.start <= time && time < point.end;
-}
-
-function buildMarkers(lyrics: LyricLine[], ouenPoints: OuenPoint[]): BuiltMarkers {
-  const byLine = new Map<number, LineMarker[]>();
-  const standalone: StandaloneRow[] = [];
-  const sorted = [...ouenPoints].sort((a, b) => a.start - b.start);
-  for (const point of sorted) {
-    const markers: LineMarker[] = [];
-    for (const action of point.actions) {
-      const label = actionLabel(action);
-      if (label === null) {
-        continue;
-      }
-      markers.push({
-        type: action.type,
-        label,
-        color: ACTION_COLOR[action.type],
-        romaji: action.type === "chorus" ? action.romaji : undefined,
-        point,
-      });
-    }
-    if (markers.length === 0) {
-      continue;
-    }
-    // 方案 A：找到所有與此應援區間（point.start ~ point.end）有交集的歌詞行
-    const matchedLineIndices: number[] = [];
-    lyrics.forEach((line, idx) => {
-      if (line.start < point.end && line.end > point.start) {
-        matchedLineIndices.push(idx);
-      }
-    });
-
-    if (matchedLineIndices.length > 0) {
-      matchedLineIndices.forEach((idx) => {
-        const existing = byLine.get(idx) ?? [];
-        existing.push(...markers);
-        byLine.set(idx, existing);
-      });
-    } else {
-      standalone.push({ time: point.start, markers, point });
-    }
-  }
-  return { byLine, standalone };
 }
 
 function byTime(a: number, b: number, aFirst: boolean): number {
@@ -127,7 +100,6 @@ export const LyricsArea = memo(function LyricsArea({
   ouenPoints,
   mode,
   currentIndex,
-  chorusActive,
   currentTime,
   onSeek,
   onAdjustLineTime,
@@ -136,7 +108,7 @@ export const LyricsArea = memo(function LyricsArea({
   onToggleLock,
   devMode,
 }: LyricsAreaProps) {
-  const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
   const built = useMemo(() => buildMarkers(lyrics, ouenPoints), [lyrics, ouenPoints]);
 
   const karaokeRows = useMemo(() => {
@@ -159,14 +131,13 @@ export const LyricsArea = memo(function LyricsArea({
       line,
       lineIndex: i,
       markers: built.byLine.get(i) ?? [],
-      chorus: isLineInChorus(line, ouenPoints),
     }));
     for (const row of built.standalone) {
-      items.push({ kind: "standalone", time: row.time, markers: row.markers });
+      items.push({ kind: "standalone", time: row.time, markers: row.markers, point: row.point });
     }
     items.sort((a, b) => byTime(a.kind === "line" ? a.line.start : a.time, b.kind === "line" ? b.line.start : b.time, true));
     return items;
-  }, [lyrics, ouenPoints, built]);
+  }, [lyrics, built]);
 
   useEffect(() => {
     if (currentIndex === null) {
@@ -198,9 +169,9 @@ export const LyricsArea = memo(function LyricsArea({
                 role="button"
                 tabIndex={0}
                 ref={(el) => {
-                  rowRefs.current[i] = el as unknown as HTMLButtonElement;
+                  rowRefs.current[i] = el;
                 }}
-                className={`chant-line ${cls} ${getLineActionClasses(item.line, ouenPoints)}`}
+                className={`chant-line ${cls} ${lineActionTypes(item.line, ouenPoints).join(" ")}`}
                 onClick={() => onSeek(item.line.start)}
                 onKeyDown={(e) => { if (e.key === "Enter") onSeek(item.line.start); }}
               >
@@ -220,13 +191,7 @@ export const LyricsArea = memo(function LyricsArea({
                         {" · "}
                       </>
                     ) : null}
-                    <span className="chant-type-label">
-                      {(() => {
-                        if (item.markers.length === 0) return "";
-                        const labels = Array.from(new Set(item.markers.map((m) => ACTION_LABEL[m.type])));
-                        return `(${labels.join("、")})`;
-                      })()}
-                    </span>
+                    <span className="chant-type-label">{actionLabelText(item.line, ouenPoints)}</span>
                   </span>
                   {onAdjustLineTime && (
                     <span onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", marginTop: "4px" }}>
@@ -300,40 +265,24 @@ export const LyricsArea = memo(function LyricsArea({
                 </div>
                 {(() => {
                   // 只在該應援區間（point.start ~ point.end）所涵蓋的第一行歌詞進行倒數
-                  const upcomingMarker = item.markers.find((m) => {
-                    const diff = m.point.start - currentTime;
-                    return diff > 0 && diff <= 3.0;
-                  });
+                  const upcoming = upcomingPointForLine(item.line, ouenPoints, currentTime);
+                  if (!upcoming) return null;
 
-                  if (!upcomingMarker) return null;
-
-                  // 檢查本行是否為該應援區間涵蓋的第一行歌詞
-                  const firstCoveredLine = lyrics.find(
-                    (line) => line.start < upcomingMarker.point.end && line.end > upcomingMarker.point.start,
-                  );
-
-                  if (firstCoveredLine && firstCoveredLine.start === item.line.start) {
-                    const diff = upcomingMarker.point.start - currentTime;
+                  if (isFirstCoveredLine(item.line, upcoming, lyrics)) {
+                    const diff = upcoming.start - currentTime;
                     return <div className="line-countdown-top">⏳{Math.ceil(diff)}</div>;
                   }
 
                   return null;
                 })()}
                 {(() => {
-                  const hasParentheses = /\(.*?\)/.test(item.line.text);
-                  const visibleMarkers = item.markers.filter((m) => {
-                    // 如果歌詞含括號，文字口號與手勢已被垂直對齊顯示在括號上方，頂部列不重複顯示
-                    if (hasParentheses && (m.type === "gesture" || (m.label && item.line.text.includes(m.label)))) {
-                      return false;
-                    }
-                    return true;
-                  });
+                  const visibleMarkers = item.markers;
                   if (visibleMarkers.length === 0) return null;
 
                   return (
                     <div className="chant-markers">
                       {visibleMarkers.map((m, j) => {
-                        const active = isPointActive(m.point, currentTime);
+                        const active = m.point.start <= currentTime && currentTime < m.point.end;
                         return (
                           <span
                             key={j}
@@ -349,31 +298,7 @@ export const LyricsArea = memo(function LyricsArea({
                   );
                 })()}
                 <div className="chant-text">
-                  {(() => {
-                    const text = item.line.text;
-                    const match = text.match(/^(.*?)\((.*?)\)(.*)$/);
-                    if (match && item.markers.length > 0) {
-                      const [, before, parenthesized, after] = match;
-                      const activeColor = item.markers[0]?.color ?? "#b8a024";
-                      const gestureMarker = item.markers.find((m) => m.type === "gesture");
-
-                      return (
-                        <>
-                          {before}
-                          <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", verticalAlign: "bottom" }}>
-                            {gestureMarker && (
-                              <span style={{ fontSize: "18px", lineHeight: "1.2", marginBottom: "2px" }}>
-                                {gestureMarker.label}
-                              </span>
-                            )}
-                            <span style={{ color: activeColor, fontWeight: 800 }}>({parenthesized})</span>
-                          </span>
-                          {after}
-                        </>
-                      );
-                    }
-                    return text;
-                  })()}
+                  {renderLyricFragments(buildLineColoring(item.line, ouenPoints).fragments, currentTime, false)}
                 </div>
                 {item.line.romaji && <div className="chant-romaji">{item.line.romaji}</div>}
               </div>
@@ -390,16 +315,19 @@ export const LyricsArea = memo(function LyricsArea({
             >
               <div className="chant-time">{formatTime(item.time)} · 應援</div>
               <div className="chant-markers">
-                {item.markers.map((m, j) => (
-                  <span
-                    key={j}
-                    className="chant-marker"
-                    style={{ "--marker-color": m.color } as CSSProperties}
-                    title={ACTION_LABEL[m.type]}
-                  >
-                    {m.label}
-                  </span>
-                ))}
+                {item.markers.map((m, j) => {
+                  const active = m.point.start <= currentTime && currentTime < m.point.end;
+                  return (
+                    <span
+                      key={j}
+                      className={`chant-marker${active ? " active-point" : ""}`}
+                      style={{ "--marker-color": m.color } as CSSProperties}
+                      title={ACTION_LABEL[m.type]}
+                    >
+                      {m.label}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           );
@@ -429,43 +357,29 @@ export const LyricsArea = memo(function LyricsArea({
               ref={(el) => {
                 rowRefs.current[i] = el;
               }}
-              className={`karaoke-line ${cls} ${getLineActionClasses(row.line, ouenPoints)}`}
+              className={`karaoke-line ${cls}`}
               onClick={() => onSeek(row.line.start)}
               onKeyDown={(e) => { if (e.key === "Enter") onSeek(row.line.start); }}
             >
               {(() => {
-                const upcomingMarker = row.markers.find((m) => {
-                  const diff = m.point.start - currentTime;
-                  return diff > 0 && diff <= 3.0;
-                });
+                const upcoming = upcomingPointForLine(row.line, ouenPoints, currentTime);
+                if (!upcoming) return null;
 
-                if (!upcomingMarker) return null;
-
-                const firstCoveredLine = lyrics.find(
-                  (line) => line.start < upcomingMarker.point.end && line.end > upcomingMarker.point.start,
-                );
-
-                if (firstCoveredLine && firstCoveredLine.start === row.line.start) {
-                  const diff = upcomingMarker.point.start - currentTime;
+                if (isFirstCoveredLine(row.line, upcoming, lyrics)) {
+                  const diff = upcoming.start - currentTime;
                   return <div className="line-countdown-top">⏳{Math.ceil(diff)}</div>;
                 }
 
                 return null;
               })()}
               {(() => {
-                const hasParentheses = /\(.*?\)/.test(row.line.text);
-                const visibleMarkers = row.markers.filter((m) => {
-                  if (hasParentheses && (m.type === "gesture" || (m.label && row.line.text.includes(m.label)))) {
-                    return false;
-                  }
-                  return true;
-                });
+                const visibleMarkers = row.markers;
                 if (visibleMarkers.length === 0) return null;
 
                 return (
                   <span className="karaoke-markers">
                     {visibleMarkers.map((m, j) => {
-                      const active = isPointActive(m.point, currentTime);
+                      const active = m.point.start <= currentTime && currentTime < m.point.end;
                       return (
                         <span
                           key={j}
@@ -481,31 +395,7 @@ export const LyricsArea = memo(function LyricsArea({
                 );
               })()}
               <span className="karaoke-text">
-                {(() => {
-                  const text = row.line.text;
-                  const match = text.match(/^(.*?)\((.*?)\)(.*)$/);
-                  if (match && row.markers.length > 0) {
-                    const [, before, parenthesized, after] = match;
-                    const activeColor = row.markers[0]?.color ?? "#b8a024";
-                    const gestureMarker = row.markers.find((m) => m.type === "gesture");
-
-                    return (
-                      <>
-                        {before}
-                        <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", verticalAlign: "bottom" }}>
-                          {gestureMarker && (
-                            <span style={{ fontSize: "clamp(20px, 4.5vw, 26px)", lineHeight: "1.2", marginBottom: "2px" }}>
-                              {gestureMarker.label}
-                            </span>
-                          )}
-                          <span style={{ color: activeColor, fontWeight: 900 }}>({parenthesized})</span>
-                        </span>
-                        {after}
-                      </>
-                    );
-                  }
-                  return text;
-                })()}
+                {renderLyricFragments(buildLineColoring(row.line, ouenPoints).fragments, currentTime, true)}
                 {devMode && (
                   <>
                     <span style={{ fontSize: "11px", opacity: 0.7, marginLeft: "6px" }}>
@@ -591,7 +481,7 @@ export const LyricsArea = memo(function LyricsArea({
             </div>
           );
         }
-        const active = isPointActive(row.point, currentTime);
+        const active = row.point.start <= currentTime && currentTime < row.point.end;
         const state = active ? "active" : currentTime >= row.point.end ? "past" : "future";
         return (
           <div
@@ -599,7 +489,7 @@ export const LyricsArea = memo(function LyricsArea({
             role="button"
             tabIndex={0}
             ref={(el) => {
-              rowRefs.current[i] = el as unknown as HTMLButtonElement;
+              rowRefs.current[i] = el;
             }}
             className={`karaoke-line marker-line ${state}`}
             onClick={() => onSeek(row.time)}
