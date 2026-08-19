@@ -80,13 +80,14 @@
       ]
     },
     {
-      "_comment": "5. 🙋 【手勢】（手勢橘紅色，可參考 public/gestures.json：✌️ 🤣 ☝️ 🙆 ✊ 🙌）",
+      "_comment": "5. 🙋 【手勢】（手勢橘紅色，可參考 public/gestures.json：✌️ 🤣 ☝️ 🙆 ✊ 🙌；可附 text 只染歌詞中的片段）",
       "start": 30.0,
       "end": 35.0,
       "actions": [
         {
           "type": "gesture",
-          "gesture": "🙌"
+          "gesture": "🙌",
+          "text": "手勢"
         }
       ]
     },

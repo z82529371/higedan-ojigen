@@ -317,12 +317,13 @@
       ],
       "actions": [
         {
-          "type": "gesture",
-          "gesture": "✌️"
+          "type": "chorus",
+          "text": "(Yeah)"
         },
         {
-          "type": "chorus",
-          "text": "Yeah"
+          "type": "gesture",
+          "gesture": "✌️",
+          "text": "(Yeah)"
         }
       ]
     },
