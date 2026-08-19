@@ -9,11 +9,13 @@ export interface ChorusAction {
 export interface GestureAction {
   type: "gesture";
   gesture: string;
+  text?: string;
 }
 
 export interface ClapAction {
   type: "clap";
   pattern: string;
+  text?: string;
 }
 
 export type OuenAction = ChorusAction | GestureAction | ClapAction;
@@ -23,10 +25,18 @@ export interface OuenTimeInterval {
   end: number;
 }
 
+/** 資料檔中的原始應援點形狀：start/end 或 times 二者擇一，載入時經 validate 展開。 */
 export interface OuenPoint {
   start?: number;
   end?: number;
   times?: OuenTimeInterval[];
+  actions: OuenAction[];
+}
+
+/** 載入展開後的應援點：times 已攤平成單一時間區間，start/end 恆為必填。 */
+export interface ResolvedOuenPoint {
+  start: number;
+  end: number;
   actions: OuenAction[];
 }
 
@@ -43,7 +53,7 @@ export interface Song {
   audio: string;
   note?: string;
   lyrics: LyricLine[];
-  ouenPoints: OuenPoint[];
+  ouenPoints: ResolvedOuenPoint[];
   lockedLines?: number[];
 }
 

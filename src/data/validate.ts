@@ -1,4 +1,4 @@
-import type { LyricLine, OuenAction, OuenPoint, Song, SongMeta } from "../types";
+import type { LyricLine, OuenAction, ResolvedOuenPoint, Song, SongMeta } from "../types";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -88,16 +88,25 @@ function parseAction(raw: unknown, context: string, gestures: readonly string[])
       if (!gestures.includes(gesture)) {
         throw new Error(`${context} 的手勢「${gesture}」不在手勢目錄內`);
       }
-      return { type: "gesture", gesture };
+      const result: OuenAction = { type: "gesture", gesture };
+      if (raw.text !== undefined) {
+        result.text = requireString(raw, "text", `${context} 的手勢`);
+      }
+      return result;
     }
-    case "clap":
-      return { type: "clap", pattern: requireString(raw, "pattern", context) };
+    case "clap": {
+      const result: OuenAction = { type: "clap", pattern: requireString(raw, "pattern", context) };
+      if (raw.text !== undefined) {
+        result.text = requireString(raw, "text", `${context} 的拍手`);
+      }
+      return result;
+    }
     default:
       throw new Error(`${context} 有未知的應援動作型別「${String(type)}」`);
   }
 }
 
-function parseOuenPoint(raw: unknown, context: string, index: number, gestures: readonly string[]): OuenPoint[] {
+function parseOuenPoint(raw: unknown, context: string, index: number, gestures: readonly string[]): ResolvedOuenPoint[] {
   if (!isObject(raw)) {
     throw new Error(`${context} 的 ouenPoints 第 ${index} 個不是物件`);
   }
@@ -107,8 +116,15 @@ function parseOuenPoint(raw: unknown, context: string, index: number, gestures: 
   }
   const actions = raw.actions.map((action) => parseAction(action, pointContext, gestures));
 
-  if (Array.isArray(raw.times) && raw.times.length > 0) {
-    return raw.times.map((t, tIdx) => {
+  const hasTimes = Array.isArray(raw.times) && raw.times.length > 0;
+  const hasSingleTime = raw.start !== undefined || raw.end !== undefined;
+  if (hasTimes && hasSingleTime) {
+    throw new Error(`${pointContext} 不能同時宣告「times」與「start/end」`);
+  }
+
+  if (hasTimes) {
+    const times = raw.times as unknown[];
+    return times.map((t, tIdx) => {
       if (!isObject(t)) {
         throw new Error(`${pointContext} 的 times 第 ${tIdx + 1} 個不是物件`);
       }
@@ -177,7 +193,7 @@ export function parseSong(raw: unknown, gestures: readonly string[]): Song {
   }
 
   result.lyrics = lyrics;
-  result.ouenPoints = ouenPoints as (OuenPoint & { start: number; end: number })[];
+  result.ouenPoints = ouenPoints;
   if (Array.isArray(raw.lockedLines)) {
     result.lockedLines = raw.lockedLines.filter((x): x is number => typeof x === "number");
   }

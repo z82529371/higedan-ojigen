@@ -78,6 +78,40 @@ describe("parseSong", () => {
     expect(parseSong(raw, GESTURES)).toEqual(raw);
   });
 
+  it("parses a gesture action with coloring text", () => {
+    const raw = {
+      id: "subtitle",
+      title: "Subtitle",
+      audio: "audio/subtitle.mp3",
+      lyrics: [{ start: 0.5, end: 4.2, text: "Yeah Yeah" }],
+      ouenPoints: [
+        {
+          start: 1.0,
+          end: 3.0,
+          actions: [{ type: "gesture", gesture: "🙌", text: "Yeah" }],
+        },
+      ],
+    };
+    expect(parseSong(raw, GESTURES)).toEqual(raw);
+  });
+
+  it("parses a clap action with coloring text", () => {
+    const raw = {
+      id: "subtitle",
+      title: "Subtitle",
+      audio: "audio/subtitle.mp3",
+      lyrics: [{ start: 0.5, end: 4.2, text: "Yeah Yeah" }],
+      ouenPoints: [
+        {
+          start: 1.0,
+          end: 3.0,
+          actions: [{ type: "clap", pattern: "👏 👏", text: "Yeah" }],
+        },
+      ],
+    };
+    expect(parseSong(raw, GESTURES)).toEqual(raw);
+  });
+
   it("parses an optional note field", () => {
     const raw = {
       id: "subtitle",
@@ -227,6 +261,24 @@ describe("parseSong", () => {
       ouenPoints: [{ start: 1.0, end: 2.0, actions: [] }],
     };
     expect(() => parseSong(raw, GESTURES)).toThrow(/actions/);
+  });
+
+  it("rejects an ouen point that declares both times and start/end", () => {
+    const raw = {
+      id: "x",
+      title: "X",
+      audio: "a.mp3",
+      lyrics: [],
+      ouenPoints: [
+        {
+          times: [{ start: 10.0, end: 15.0 }],
+          start: 1.0,
+          end: 2.0,
+          actions: [{ type: "clap", pattern: "👏" }],
+        },
+      ],
+    };
+    expect(() => parseSong(raw, GESTURES)).toThrow(/times/);
   });
 
   it("rejects an unknown action type", () => {
