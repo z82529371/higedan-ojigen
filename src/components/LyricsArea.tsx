@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { LyricLine, ResolvedOuenPoint } from "../types";
 import { formatTime } from "../time/format";
-import { ACTION_LABEL } from "./actionColors";
+import { ACTION_LABEL, ACTION_PRIORITY } from "./actionColors";
 import { buildMarkers, type LineMarker } from "../lyrics/markers";
 import { buildLineColoring, type LyricFragment } from "../lyrics/lyricColoring";
 import { coveringPoints, isLineCovered, lineActionTypes } from "../lyrics/coverage";
@@ -35,6 +35,16 @@ function actionLabelText(line: LyricLine, ouenPoints: ResolvedOuenPoint[]): stri
   return labels.length > 0 ? `(${labels.join("、")})` : "";
 }
 
+function standaloneTypeLabel(markers: readonly LineMarker[]): { label: string; topClass: string } {
+  const types = Array.from(new Set(markers.map((m) => m.type)));
+  if (types.length === 0) return { label: "", topClass: "" };
+  const sorted = [...types].sort((a, b) => ACTION_PRIORITY[b] - ACTION_PRIORITY[a]);
+  return {
+    label: `(${sorted.map((t) => ACTION_LABEL[t]).join("、")})`,
+    topClass: sorted[0],
+  };
+}
+
 function upcomingPointForLine(line: LyricLine, ouenPoints: ResolvedOuenPoint[], currentTime: number): ResolvedOuenPoint | null {
   return (
     coveringPoints(line, ouenPoints).find((p) => {
@@ -58,7 +68,7 @@ function renderLyricFragments(fragments: LyricFragment[], currentTime: number, i
       </span>
     );
 
-    if (!hasMarkers) {
+    if (!hasMarkers && !f.romaji) {
       return textSpan;
     }
 
@@ -67,22 +77,26 @@ function renderLyricFragments(fragments: LyricFragment[], currentTime: number, i
 
     return (
       <span key={i} className="inline-anchored-fragment">
-        <span className="inline-anchored-markers">
-          {f.attachedMarkers!.map((m, j) => {
-            const active = m.point.start <= currentTime && currentTime < m.point.end;
-            return (
-              <span
-                key={j}
-                className={`${markerCls}${active ? ` ${activeCls}` : ""}`}
-                style={{ "--marker-color": m.color } as CSSProperties}
-                title={ACTION_LABEL[m.type]}
-              >
-                {m.label}
-              </span>
-            );
-          })}
-        </span>
+        {hasMarkers && (
+          <span className="inline-anchored-markers">
+            {f.attachedMarkers!.map((m, j) => {
+              const active = m.point.start <= currentTime && currentTime < m.point.end;
+              return (
+                <span
+                  key={j}
+                  className={`${markerCls}${active ? ` ${activeCls}` : ""}`}
+                  style={{ "--marker-color": m.color } as CSSProperties}
+                  title={ACTION_LABEL[m.type]}
+                >
+                  {m.label}
+                  {m.romaji && <span className="marker-romaji">{m.romaji}</span>}
+                </span>
+              );
+            })}
+          </span>
+        )}
         {textSpan}
+        {f.romaji && <span className="fragment-romaji">{f.romaji}</span>}
       </span>
     );
   });
@@ -191,6 +205,15 @@ export const LyricsArea = memo(function LyricsArea({
                         {" · "}
                       </>
                     ) : null}
+                    {(() => {
+                      const upcoming = upcomingPointForLine(item.line, ouenPoints, currentTime);
+                      if (!upcoming) return null;
+                      if (isFirstCoveredLine(item.line, upcoming, lyrics)) {
+                        const diff = upcoming.start - currentTime;
+                        return <span className="line-countdown-inline">⏳{Math.ceil(diff)}</span>;
+                      }
+                      return null;
+                    })()}
                     <span className="chant-type-label">{actionLabelText(item.line, ouenPoints)}</span>
                   </span>
                   {onAdjustLineTime && (
@@ -264,18 +287,6 @@ export const LyricsArea = memo(function LyricsArea({
                   )}
                 </div>
                 {(() => {
-                  // 只在該應援區間（point.start ~ point.end）所涵蓋的第一行歌詞進行倒數
-                  const upcoming = upcomingPointForLine(item.line, ouenPoints, currentTime);
-                  if (!upcoming) return null;
-
-                  if (isFirstCoveredLine(item.line, upcoming, lyrics)) {
-                    const diff = upcoming.start - currentTime;
-                    return <div className="line-countdown-top">⏳{Math.ceil(diff)}</div>;
-                  }
-
-                  return null;
-                })()}
-                {(() => {
                   const visibleMarkers = item.markers;
                   if (visibleMarkers.length === 0) return null;
 
@@ -291,6 +302,7 @@ export const LyricsArea = memo(function LyricsArea({
                             title={ACTION_LABEL[m.type]}
                           >
                             {m.label}
+                            {m.romaji && <span className="marker-romaji">{m.romaji}</span>}
                           </span>
                         );
                       })}
@@ -304,33 +316,55 @@ export const LyricsArea = memo(function LyricsArea({
               </div>
             );
           }
-          return (
-            <div
-              key={i}
-              role="button"
-              tabIndex={0}
-              className={`chant-line marker-line${item.point.start <= currentTime && currentTime < item.point.end ? " active" : ""}`}
-              onClick={() => onSeek(item.time)}
-              onKeyDown={(e) => { if (e.key === "Enter") onSeek(item.time); }}
-            >
-              <div className="chant-time">{formatTime(item.time)} · 應援</div>
-              <div className="chant-markers">
-                {item.markers.map((m, j) => {
-                  const active = m.point.start <= currentTime && currentTime < m.point.end;
-                  return (
-                    <span
-                      key={j}
-                      className={`chant-marker${active ? " active-point" : ""}`}
-                      style={{ "--marker-color": m.color } as CSSProperties}
-                      title={ACTION_LABEL[m.type]}
-                    >
+          {
+            const { label, topClass } = standaloneTypeLabel(item.markers);
+            const isActive = item.point.start <= currentTime && currentTime < item.point.end;
+            return (
+              <div
+                key={i}
+                role="button"
+                tabIndex={0}
+                className={`chant-line marker-line ${topClass}${isActive ? " active" : ""}`}
+                onClick={() => onSeek(item.time)}
+                onKeyDown={(e) => { if (e.key === "Enter") onSeek(item.time); }}
+              >
+                <div className="standalone-meta">
+                  {(() => {
+                    const diff = item.point.start - currentTime;
+                    if (diff > 0 && diff <= 3.0) {
+                      return <span className="line-countdown-inline">⏳{Math.ceil(diff)}</span>;
+                    }
+                    return null;
+                  })()}
+                  {label && <span className="chant-type-label">{label}</span>}
+                </div>
+                {item.markers.some((m) => m.type !== "chorus") && (
+                  <div className="standalone-gestures">
+                    {item.markers
+                      .filter((m) => m.type !== "chorus")
+                      .map((m, j) => (
+                        <span
+                          key={j}
+                          className={`chant-marker${m.point.start <= currentTime && currentTime < m.point.end ? " active-point" : ""}`}
+                          style={{ "--marker-color": m.color } as CSSProperties}
+                          title={ACTION_LABEL[m.type]}
+                        >
+                          {m.label}
+                        </span>
+                      ))}
+                  </div>
+                )}
+                {item.markers
+                  .filter((m) => m.type === "chorus")
+                  .map((m, j) => (
+                    <div key={j} className="standalone-chorus" style={{ color: m.color }}>
                       {m.label}
-                    </span>
-                  );
-                })}
+                      {m.romaji && <span className="marker-romaji">{m.romaji}</span>}
+                    </div>
+                  ))}
               </div>
-            </div>
-          );
+            );
+          }
         })}
       </div>
     );
@@ -386,6 +420,7 @@ export const LyricsArea = memo(function LyricsArea({
                           title={ACTION_LABEL[m.type]}
                         >
                           {m.label}
+                          {m.romaji && <span className="marker-romaji">{m.romaji}</span>}
                         </span>
                       );
                     })}
@@ -493,16 +528,37 @@ export const LyricsArea = memo(function LyricsArea({
             onClick={() => onSeek(row.time)}
             onKeyDown={(e) => { if (e.key === "Enter") onSeek(row.time); }}
           >
-            {row.markers.map((m, j) => (
-              <span
-                key={j}
-                className="karaoke-marker"
-                style={{ "--marker-color": m.color } as CSSProperties}
-                title={ACTION_LABEL[m.type]}
-              >
-                {m.label}
-              </span>
-            ))}
+            {(() => {
+              const diff = row.point.start - currentTime;
+              if (diff > 0 && diff <= 3.0) {
+                return <div className="line-countdown-top">⏳{Math.ceil(diff)}</div>;
+              }
+              return null;
+            })()}
+            {row.markers.some((m) => m.type !== "chorus") && (
+              <div className="standalone-gestures">
+                {row.markers
+                  .filter((m) => m.type !== "chorus")
+                  .map((m, j) => (
+                    <span
+                      key={j}
+                      className="karaoke-marker"
+                      style={{ "--marker-color": m.color } as CSSProperties}
+                      title={ACTION_LABEL[m.type]}
+                    >
+                      {m.label}
+                    </span>
+                  ))}
+              </div>
+            )}
+            {row.markers
+              .filter((m) => m.type === "chorus")
+              .map((m, j) => (
+                <div key={j} className="standalone-chorus" style={{ color: m.color }}>
+                  {m.label}
+                  {m.romaji && <span className="marker-romaji">{m.romaji}</span>}
+                </div>
+              ))}
           </div>
         );
       })}
