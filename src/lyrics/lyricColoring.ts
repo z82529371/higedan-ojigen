@@ -1,5 +1,5 @@
 import type { LyricLine, OuenAction, OuenActionType, ResolvedOuenPoint } from "../types";
-import { ACTION_COLOR, actionLabel } from "../components/actionColors";
+import { ACTION_COLOR, ACTION_PRIORITY, actionLabel } from "../components/actionColors";
 import { isLineCovered } from "./coverage";
 import type { LineMarker } from "./markers";
 
@@ -14,15 +14,8 @@ export type LyricColoring =
   | { type: "partial"; fragments: LyricFragment[] }
   | { type: "none"; fragments: LyricFragment[] };
 
-const ACTION_PRIORITY: Record<OuenActionType, number> = {
-  chorus: 3,
-  gesture: 2,
-  clap: 1,
-};
-
-function isActionWithText(action: OuenAction): action is OuenAction & { text: string } {
-  return action.text !== undefined;
-}
+const isActionWithText = (action: OuenAction): action is OuenAction & { text: string } =>
+  action.text !== undefined;
 
 function splitOnMatches(lineText: string, matchText: string, color: string): LyricFragment[] {
   const fragments: LyricFragment[] = [];

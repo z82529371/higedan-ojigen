@@ -12,6 +12,12 @@ export const ACTION_LABEL: Record<OuenActionType, string> = {
   clap: "拍手",
 };
 
+export const ACTION_PRIORITY: Record<OuenActionType, number> = {
+  chorus: 3,
+  gesture: 2,
+  clap: 1,
+};
+
 export function actionLabel(action: OuenAction): string | null {
   switch (action.type) {
     case "gesture":

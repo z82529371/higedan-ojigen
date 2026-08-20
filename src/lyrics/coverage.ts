@@ -1,4 +1,5 @@
 import type { LyricLine, OuenActionType, ResolvedOuenPoint } from "../types";
+import { ACTION_PRIORITY } from "../components/actionColors";
 
 export function isLineCovered(line: LyricLine, point: ResolvedOuenPoint): boolean {
   return line.start < point.end && line.end > point.start;
@@ -17,5 +18,5 @@ export function lineActionTypes(line: LyricLine, ouenPoints: readonly ResolvedOu
       }
     }
   }
-  return types;
+  return types.sort((a, b) => ACTION_PRIORITY[b] - ACTION_PRIORITY[a]);
 }
