@@ -7,6 +7,7 @@ export interface LyricFragment {
   text: string;
   color: string | null;
   attachedMarkers?: LineMarker[];
+  romaji?: string;
 }
 
 export type LyricColoring =
@@ -109,11 +110,22 @@ export function buildLineColoring(line: LyricLine, ouenPoints: readonly Resolved
     const fragments: LyricFragment[] = [{ text: line.text, color: null }];
     const colored = texts.reduce((acc, text) => applyMatches(acc, text, ACTION_COLOR[winner]), fragments);
 
-    const withMarkers = colored.map((f) => {
-      if (gestureMarkersMap.has(f.text)) {
-        return { ...f, attachedMarkers: gestureMarkersMap.get(f.text) };
+    const romajiByText = new Map<string, string>();
+    for (const a of coveringActions) {
+      if (a.type === "chorus" && a.text !== undefined && a.romaji !== undefined && line.text.includes(a.text)) {
+        romajiByText.set(a.text, a.romaji);
       }
-      return f;
+    }
+
+    const withMarkers = colored.map((f) => {
+      const extra: LyricFragment = { ...f };
+      if (gestureMarkersMap.has(f.text)) {
+        extra.attachedMarkers = gestureMarkersMap.get(f.text);
+      }
+      if (f.color !== null && romajiByText.has(f.text)) {
+        extra.romaji = romajiByText.get(f.text);
+      }
+      return extra;
     });
 
     return { type: "partial", fragments: withMarkers };

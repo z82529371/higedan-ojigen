@@ -41,6 +41,20 @@ describe("buildLineColoring", () => {
       ]);
     });
 
+    it("attaches romaji to the matched chorus fragment", () => {
+      const point: ResolvedOuenPoint = {
+        start: 0.0,
+        end: 30.0,
+        actions: [{ type: "chorus", text: "(本能)", romaji: "honnou" }],
+      };
+      const { type, fragments } = buildLineColoring(LYRICS[0], [point]);
+      expect(type).toBe("partial");
+      expect(fragments).toEqual([
+        { text: "真っ赤な本能", color: null },
+        { text: "(本能)", color: "#d97706", romaji: "honnou" },
+      ]);
+    });
+
     it("colors only the matching text for a gesture with text", () => {
       const point: ResolvedOuenPoint = {
         start: 0.0,
