@@ -4,7 +4,7 @@ import { Player } from "./components/Player";
 import { SongList } from "./components/SongList";
 
 function songIdFromHash(): string | null {
-  const match = window.location.hash.match(/^#\/song\/(.+)$/);
+  const match = window.location.hash.split("?")[0].match(/^#\/song\/(.+)$/);
   if (!match) {
     return null;
   }

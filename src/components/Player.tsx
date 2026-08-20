@@ -6,6 +6,13 @@ import { Controls } from "./Controls";
 import { LyricsArea, type LyricsMode } from "./LyricsArea";
 import { SetlistDrawer } from "./SetlistDrawer";
 
+function devFromUrl(): boolean {
+  const search = new URLSearchParams(window.location.search);
+  if (search.get("dev") === "1") return true;
+  const hashQuery = window.location.hash.split("?")[1];
+  return hashQuery ? new URLSearchParams(hashQuery).get("dev") === "1" : false;
+}
+
 interface SetlistEntry {
   id: string;
   title: string;
@@ -336,7 +343,17 @@ export function Player({
     [currentId, lyrics, lockedLines],
   );
 
-  const [devMode, setDevMode] = useState(false);
+  const [devMode, setDevMode] = useState(() => devFromUrl());
+
+  useEffect(() => {
+    const onUrlChange = () => setDevMode(devFromUrl());
+    window.addEventListener("hashchange", onUrlChange);
+    window.addEventListener("popstate", onUrlChange);
+    return () => {
+      window.removeEventListener("hashchange", onUrlChange);
+      window.removeEventListener("popstate", onUrlChange);
+    };
+  }, []);
 
   const handleModeChange = useCallback((next: LyricsMode) => {
     setMode(next);
@@ -351,18 +368,6 @@ export function Player({
             ‹ 返回歌單
           </button>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <button
-              type="button"
-              className="setlist-btn"
-              style={{
-                background: devMode ? "#ff9500" : "#eee",
-                color: devMode ? "#fff" : "#333",
-                fontWeight: "bold",
-              }}
-              onClick={() => setDevMode((prev) => !prev)}
-            >
-              {devMode ? "🛠️ 開發對齊模式" : "🎵 一般瀏覽模式"}
-            </button>
             <button type="button" className="setlist-btn" onClick={() => setSetlistOpen(true)}>
               ☰ 曲目
             </button>
@@ -371,12 +376,13 @@ export function Player({
 
         <div className="song-title-row">
           <h1>{title}</h1>
-          <span className={`status-chip${audioMissing ? " missing" : ""}`}>
-            {audioMissing ? "缺音檔" : "音檔就緒"}
-          </span>
-          <span className="status-chip" style={{ background: "#e3f2fd", color: "#0288d1" }}>
-            已鎖定 {lockedLines.size}/{lyricsState.length} 句 (完成率 {lyricsState.length > 0 ? Math.round((lockedLines.size / lyricsState.length) * 100) : 0}%)
-          </span>
+          {audioMissing && <span className="status-chip missing">缺音檔</span>}
+          {devMode && !audioMissing && <span className="status-chip">音檔就緒</span>}
+          {devMode && (
+            <span className="status-chip" style={{ background: "#e3f2fd", color: "#0288d1" }}>
+              已鎖定 {lockedLines.size}/{lyricsState.length} 句 (完成率 {lyricsState.length > 0 ? Math.round((lockedLines.size / lyricsState.length) * 100) : 0}%)
+            </span>
+          )}
         </div>
 
         <div className="song-actions">
