@@ -309,7 +309,7 @@ export const LyricsArea = memo(function LyricsArea({
               key={i}
               role="button"
               tabIndex={0}
-              className="chant-line"
+              className={`chant-line marker-line${item.point.start <= currentTime && currentTime < item.point.end ? " active" : ""}`}
               onClick={() => onSeek(item.time)}
               onKeyDown={(e) => { if (e.key === "Enter") onSeek(item.time); }}
             >
@@ -341,13 +341,11 @@ export const LyricsArea = memo(function LyricsArea({
       {karaokeRows.map((row, i) => {
         if (row.kind === "line") {
           const state =
-            currentIndex === null
-              ? "future"
-              : row.lineIndex === currentIndex
+            currentTime >= row.line.end
+              ? "past"
+              : currentTime >= row.line.start
                 ? "active"
-                : row.lineIndex < currentIndex
-                  ? "past"
-                  : "future";
+                : "future";
           const cls = state;
           return (
             <div

@@ -438,6 +438,11 @@ a {
   border-bottom-color: #b3d7ff;
 }
 
+.chant-line.marker-line.active {
+  background: #fff8ec;
+  border-bottom-color: #fde68a;
+}
+
 .chant-line::before {
   content: "";
   position: absolute;
