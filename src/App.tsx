@@ -3,10 +3,32 @@ import { loadAppData, type AppData } from "./data/load";
 import { Player } from "./components/Player";
 import { SongList } from "./components/SongList";
 
+function songIdFromHash(): string | null {
+  const match = window.location.hash.match(/^#\/song\/(.+)$/);
+  if (!match) {
+    return null;
+  }
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
+}
+
+function navigateSong(id: string | null) {
+  window.location.hash = id === null ? "#/" : `#/song/${id}`;
+}
+
 export default function App() {
   const [data, setData] = useState<AppData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => songIdFromHash());
+
+  useEffect(() => {
+    const onHash = () => setSelectedId(songIdFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,13 +83,13 @@ export default function App() {
           audioMissing: missing,
         }))}
         currentId={selected.song.id}
-        onPrev={index > 0 ? () => setSelectedId(data.songs[index - 1].meta.id) : undefined}
-        onNext={index < data.songs.length - 1 ? () => setSelectedId(data.songs[index + 1].meta.id) : undefined}
-        onSelectSong={(id) => setSelectedId(id)}
-        onBack={() => setSelectedId(null)}
+        onPrev={index > 0 ? () => navigateSong(data.songs[index - 1].meta.id) : undefined}
+        onNext={index < data.songs.length - 1 ? () => navigateSong(data.songs[index + 1].meta.id) : undefined}
+        onSelectSong={(id) => navigateSong(id)}
+        onBack={() => navigateSong(null)}
       />
     );
   }
 
-  return <SongList songs={data.songs} onSelect={setSelectedId} />;
+  return <SongList songs={data.songs} onSelect={(id) => navigateSong(id)} />;
 }
