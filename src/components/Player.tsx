@@ -338,39 +338,61 @@ export function Player({
 
   const [devMode, setDevMode] = useState(false);
 
-  return (
-    <div className="song-page">
-      <header className="song-header-row">
-        <button type="button" className="back-btn" onClick={onBack}>
-          ‹ 返回歌單
-        </button>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <button
-            type="button"
-            className="setlist-btn"
-            style={{
-              background: devMode ? "#ff9500" : "#eee",
-              color: devMode ? "#fff" : "#333",
-              fontWeight: "bold",
-            }}
-            onClick={() => setDevMode((prev) => !prev)}
-          >
-            {devMode ? "🛠️ 開發對齊模式" : "🎵 一般瀏覽模式"}
-          </button>
-          <button type="button" className="setlist-btn" onClick={() => setSetlistOpen(true)}>
-            ☰ 曲目
-          </button>
-        </div>
-      </header>
+  const handleModeChange = useCallback((next: LyricsMode) => {
+    setMode(next);
+    window.scrollTo(0, 0);
+  }, []);
 
-      <div className="song-title-row">
-        <h1>{title}</h1>
-        <span className={`status-chip${audioMissing ? " missing" : ""}`}>
-          {audioMissing ? "缺音檔" : "音檔就緒"}
-        </span>
-        <span className="status-chip" style={{ background: "#e3f2fd", color: "#0288d1" }}>
-          已鎖定 {lockedLines.size}/{lyricsState.length} 句 (完成率 {lyricsState.length > 0 ? Math.round((lockedLines.size / lyricsState.length) * 100) : 0}%)
-        </span>
+  return (
+    <div className={`song-page${mode === "karaoke" ? " karaoke-locked" : ""}`}>
+      <div className="player-sticky-top">
+        <header className="song-header-row">
+          <button type="button" className="back-btn" onClick={onBack}>
+            ‹ 返回歌單
+          </button>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <button
+              type="button"
+              className="setlist-btn"
+              style={{
+                background: devMode ? "#ff9500" : "#eee",
+                color: devMode ? "#fff" : "#333",
+                fontWeight: "bold",
+              }}
+              onClick={() => setDevMode((prev) => !prev)}
+            >
+              {devMode ? "🛠️ 開發對齊模式" : "🎵 一般瀏覽模式"}
+            </button>
+            <button type="button" className="setlist-btn" onClick={() => setSetlistOpen(true)}>
+              ☰ 曲目
+            </button>
+          </div>
+        </header>
+
+        <div className="song-title-row">
+          <h1>{title}</h1>
+          <span className={`status-chip${audioMissing ? " missing" : ""}`}>
+            {audioMissing ? "缺音檔" : "音檔就緒"}
+          </span>
+          <span className="status-chip" style={{ background: "#e3f2fd", color: "#0288d1" }}>
+            已鎖定 {lockedLines.size}/{lyricsState.length} 句 (完成率 {lyricsState.length > 0 ? Math.round((lockedLines.size / lyricsState.length) * 100) : 0}%)
+          </span>
+        </div>
+
+        <div className="song-actions">
+          <div className="mode-switch">
+            <button type="button" className={mode === "read" ? "active" : ""} onClick={() => handleModeChange("read")}>
+              完整歌詞
+            </button>
+            <button
+              type="button"
+              className={mode === "karaoke" ? "active" : ""}
+              onClick={() => handleModeChange("karaoke")}
+            >
+              卡拉OK模式
+            </button>
+          </div>
+        </div>
       </div>
 
       {note && <p className="song-note">{note}</p>}
@@ -380,21 +402,6 @@ export function Player({
           找不到音檔：<code>{audio}</code>
         </div>
       )}
-
-      <div className="song-actions">
-        <div className="mode-switch">
-          <button type="button" className={mode === "read" ? "active" : ""} onClick={() => setMode("read")}>
-            完整歌詞
-          </button>
-          <button
-            type="button"
-            className={mode === "karaoke" ? "active" : ""}
-            onClick={() => setMode("karaoke")}
-          >
-            卡拉OK模式
-          </button>
-        </div>
-      </div>
 
       {mode === "read" ? (
         <LyricsArea

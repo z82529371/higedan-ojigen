@@ -225,9 +225,21 @@ a {
   min-height: 100vh;
   margin: 0 auto;
   padding: 24px 28px 132px;
-  overflow-x: hidden;
+  overflow-x: clip;
   background: #ffffff;
   color: var(--text);
+}
+
+.player-sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  margin: -24px -28px 20px;
+  padding: 12px 28px 14px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid #eceef0;
 }
 
 .song-header-row {
@@ -235,7 +247,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 0 0 28px;
+  margin: 0 0 12px;
 }
 
 .back-btn {
@@ -304,7 +316,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin: 0 0 20px;
+  margin: 0 0 12px;
 }
 
 .song-title-row h1 {
@@ -370,7 +382,7 @@ a {
 /* 模式切換 */
 .song-actions {
   width: 100%;
-  margin: 0 0 24px;
+  margin: 0;
 }
 
 .mode-switch {
@@ -574,6 +586,25 @@ a {
   overflow: hidden;
   padding: 0;
   background: #ffffff;
+}
+
+/* 卡拉OK模式下鎖住外層捲動，容器填滿剩餘空間 */
+.song-page.karaoke-locked {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+  padding-top: 0;
+}
+
+.song-page.karaoke-locked .player-sticky-top {
+  margin-top: 0;
+}
+
+.song-page.karaoke-locked .karaoke-mode {
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
 
 .karaoke-toolbar {
