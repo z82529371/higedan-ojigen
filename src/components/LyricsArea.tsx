@@ -1,6 +1,5 @@
 import { memo, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { LyricLine, ResolvedOuenPoint } from "../types";
-import { formatTime } from "../time/format";
 import { ACTION_LABEL, ACTION_PRIORITY } from "./actionColors";
 import { buildMarkers, type LineMarker } from "../lyrics/markers";
 import { buildLineColoring, type LyricFragment } from "../lyrics/lyricColoring";
