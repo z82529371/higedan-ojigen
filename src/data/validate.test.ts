@@ -303,6 +303,28 @@ describe("parseSong", () => {
     expect(() => parseSong(raw, GESTURES)).toThrow(/🖖/);
   });
 
+  it("accepts a combined gesture made of catalog entries", () => {
+    const raw = {
+      id: "x",
+      title: "X",
+      audio: "a.mp3",
+      lyrics: [],
+      ouenPoints: [{ start: 1.0, end: 2.0, actions: [{ type: "gesture", gesture: "✊ ✊ ✊ ✊" }] }],
+    };
+    expect(() => parseSong(raw, GESTURES)).not.toThrow();
+  });
+
+  it("rejects a combined gesture with an unknown part", () => {
+    const raw = {
+      id: "x",
+      title: "X",
+      audio: "a.mp3",
+      lyrics: [],
+      ouenPoints: [{ start: 1.0, end: 2.0, actions: [{ type: "gesture", gesture: "✊ 🖖" }] }],
+    };
+    expect(() => parseSong(raw, GESTURES)).toThrow(/🖖/);
+  });
+
   it("rejects a gesture action with a missing gesture field", () => {
     const raw = {
       id: "x",

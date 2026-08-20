@@ -85,8 +85,12 @@ function parseAction(raw: unknown, context: string, gestures: readonly string[])
     }
     case "gesture": {
       const gesture = requireString(raw, "gesture", context);
-      if (!gestures.includes(gesture)) {
-        throw new Error(`${context} 的手勢「${gesture}」不在手勢目錄內`);
+      const missing = gesture
+        .split(" ")
+        .filter((part) => part.length > 0)
+        .find((part) => !gestures.includes(part));
+      if (missing !== undefined) {
+        throw new Error(`${context} 的手勢「${missing}」不在手勢目錄內`);
       }
       const result: OuenAction = { type: "gesture", gesture };
       if (raw.text !== undefined) {
